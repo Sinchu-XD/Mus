@@ -2,6 +2,7 @@ import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from Config import MONGO_URL
 
+
 DB_NAME = os.getenv("DB_NAME", "Pronova")
 
 
@@ -20,32 +21,38 @@ db = client[DB_NAME]
 async def setup_database():
     try:
         await client.admin.command("ping")
-        print("✅ MongoDB Connected")
+        print("MongoDB Connected")
     except Exception as e:
-        print("❌ MongoDB Connection Failed:", e)
+        print("MongoDB Connection Failed:", e)
         return
 
-    try:
-        await db.users.create_index("user_id", unique=True)
-        await db.users_backup.create_index("user_id", unique=True) 
+    indexes = [
+        (db.users, "user_id", True),
+        (db.users_backup, "user_id", True),
 
-        await db.chats.create_index("chat_id", unique=True)
-        await db.group_stats.create_index("chat_id", unique=True)
-        await db.songs_stats.create_index("title", unique=True)
+        (db.chats, "chat_id", True),
+        (db.group_stats, "chat_id", True),
+        (db.songs_stats, "title", True),
+
+        (db.gbanned, "user_id", True),
+        (db.daily, "date", True),
+        (db.gc_activity, "chat_id", True),
+        (db.afk, "user_id", True),
+        (db.play_mode, "chat_id", True),
+
+        (db.sudo_users, "user_id", True),
+        (db.yt_stream_cache, "_id", True),
+    ]
+
+    try:
+        for collection, field, unique in indexes:
+            try:
+                await collection.create_index(field, unique=unique)
+            except:
+                continue
 
         await db.banned.create_index(
             [("chat_id", 1), ("user_id", 1)],
-            unique=True
-        )
-
-        await db.gbanned.create_index("user_id", unique=True)
-        await db.daily.create_index("date", unique=True)
-        await db.gc_activity.create_index("chat_id", unique=True)
-        await db.afk.create_index("user_id", unique=True)
-        await db.play_mode.create_index("chat_id", unique=True)
-
-        await db.sudo_users.create_index(
-            "user_id",
             unique=True
         )
 
@@ -54,9 +61,7 @@ async def setup_database():
             unique=True
         )
 
-        await db.yt_stream_cache.create_index("_id", unique=True)
-
-        print("✅ MongoDB Indexes Ready")
+        print("MongoDB Indexes Ready")
 
     except Exception as e:
-        print("❌ Index Creation Error:", e)
+        print("Index Creation Error:", e)
