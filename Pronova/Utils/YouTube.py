@@ -7,7 +7,7 @@ from YouTubeMusic.Search import Search
 from YouTubeMusic.Stream import get_stream, get_video_stream
 from YouTubeMusic.Playlist import get_playlist_songs
 
-from mongo import get_cache, set_cache, is_stream_valid
+from Pronova.Database import is_stream_valid, set_stream_cache, is_stream_valid
 
 
 COOKIES_PATH = "cookies.txt"
@@ -94,13 +94,13 @@ async def process(item, url, extractor, cookies, video, user_id):
     try:
         key = f"{url}_{video}"
 
-        stream = await get_cache(key)
+        stream = await get_stream_cache(key)
 
         if not stream:
             stream = await safe_extract(extractor, url, cookies)
             if not stream:
                 return None
-            await set_cache(key, stream)
+            await set_stream_cache(key, stream)
 
         return clean({
             "title": item.get("title"),
