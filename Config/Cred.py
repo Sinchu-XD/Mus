@@ -15,7 +15,7 @@ OWNER_ID = int(os.getenv("OWNER_ID", "123456789"))
 
 COMMAND_PREFIX = os.getenv("PREFIX", "/")
 
-
+COOKIES_PATH = os.getenv("COOKIES_PATH")
 # Optional Buttons
 TEXTS = os.getenv("TEXTS", "")
 LINKS = os.getenv("LINKS", "")
