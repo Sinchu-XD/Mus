@@ -1,6 +1,6 @@
 from pyrogram import filters
 from traceback import format_exc
-
+from Config import *
 from Pronova.Bot import bot, engine
 from Pronova.Utils.Assistant import get_ass
 from Pronova.Utils.Font import sc
