@@ -7,8 +7,8 @@ from pyrogram.errors import (
     UserBannedInChannel
 )
 
-from Bot import bot, user
-from Bot.Helper.Font import sc
+from Pronova.Bot import bot, user
+#from Bot.Helper.Font import sc
 
 
 ASSISTANT_ID = None
