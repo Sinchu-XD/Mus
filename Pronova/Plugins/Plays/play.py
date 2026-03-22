@@ -78,9 +78,10 @@ async def handle_play(m, force=False, video=False):
         return
 
     if force:
-        if not await is_admin(chat_id, uid):
-            LOGGER.warning(f"[FORCE DENIED] {uid} not admin in {chat_id}")
-            return await m.reply(sc("admins only"))
+        try:
+            if not await is_admin(chat_id, uid):
+                LOGGER.warning(f"[FORCE DENIED] {uid} not admin in {chat_id}")
+                return await m.reply(sc("admins only"))
         except Exception:
             LOGGER.error(f"[ADMIN CHECK ERROR]\n{format_exc()}")
             return
