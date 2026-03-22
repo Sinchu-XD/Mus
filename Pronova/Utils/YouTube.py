@@ -2,6 +2,7 @@ import re
 import os
 import asyncio
 import inspect
+from traceback import format_exc
 
 from YouTubeMusic.Search import Search
 from YouTubeMusic.Stream import get_stream, get_video_stream
@@ -13,6 +14,7 @@ from Pronova.Database.YouTube import (
     is_stream_valid
 )
 
+from Pronova.Utils.Logger import LOGGER
 from Config import COOKIES_PATH
 
 
@@ -60,24 +62,35 @@ def format_duration(d):
 
 
 async def safe_extract(extractor, url, cookies):
-    for _ in range(4):
+    for i in range(4):
         try:
+            LOGGER.debug(f"[EXTRACT TRY {i+1}] {url}")
+
             if inspect.iscoroutinefunction(extractor):
                 return await extractor(url, cookies)
             return await asyncio.to_thread(extractor, url, cookies)
+
         except Exception:
+            LOGGER.error(f"[EXTRACT ERROR] {url}\n{format_exc()}")
             await asyncio.sleep(1)
+
+    LOGGER.error(f"[EXTRACT FAILED] {url}")
     return None
 
 
 async def resolve(query, video=False, user_id=None):
     try:
+        LOGGER.info(f"[RESOLVE] Query: {query} | Video: {video}")
+
         cookies = COOKIES_PATH if (COOKIES_PATH and os.path.exists(COOKIES_PATH)) else None
         extractor = get_video_stream if video else get_stream
 
         if PLAYLIST_REGEX.search(query):
+            LOGGER.info("[PLAYLIST DETECTED]")
+
             playlist = await get_playlist_songs(query)
             if not playlist:
+                LOGGER.warning("[EMPTY PLAYLIST]")
                 return None
 
             playlist = playlist[:20]
@@ -88,9 +101,16 @@ async def resolve(query, video=False, user_id=None):
             ]
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            return [r for r in results if r and not isinstance(r, Exception)]
+
+            final = [r for r in results if r and not isinstance(r, Exception)]
+
+            LOGGER.info(f"[PLAYLIST RESOLVED] {len(final)} songs")
+
+            return final
 
         if YOUTUBE_REGEX.search(query):
+            LOGGER.info("[DIRECT URL DETECTED]")
+
             return [
                 await process(
                     {"url": query, "title": "Unknown"},
@@ -102,32 +122,58 @@ async def resolve(query, video=False, user_id=None):
                 )
             ]
 
+        LOGGER.info("[SEARCH MODE]")
+
         res = await Search(query, limit=1)
+
         if not res or not res.get("main_results"):
+            LOGGER.warning("[NO SEARCH RESULTS]")
             return None
 
         item = res["main_results"][0]
-        return [await process(item, item.get("url"), extractor, cookies, video, user_id)]
+
+        return [
+            await process(
+                item,
+                item.get("url"),
+                extractor,
+                cookies,
+                video,
+                user_id
+            )
+        ]
 
     except Exception:
+        LOGGER.error(f"[RESOLVE ERROR]\n{format_exc()}")
         return None
 
 
 async def process(item, url, extractor, cookies, video, user_id):
     try:
+        LOGGER.debug(f"[PROCESS] {url}")
+
         key = f"{url}_{video}"
 
         stream = await get_stream_cache(key)
 
         if stream:
+            LOGGER.debug("[CACHE HIT]")
+
             if not await is_stream_valid(stream):
+                LOGGER.warning("[CACHE EXPIRED]")
                 stream = None
 
         if not stream:
+            LOGGER.info(f"[EXTRACT STREAM] {url}")
+
             stream = await safe_extract(extractor, url, cookies)
+
             if not stream:
+                LOGGER.error("[STREAM EXTRACTION FAILED]")
                 return None
+
             await set_stream_cache(key, stream)
+            LOGGER.debug("[CACHE SAVED]")
 
         return clean({
             "title": item.get("title"),
@@ -146,41 +192,29 @@ async def process(item, url, extractor, cookies, video, user_id):
         })
 
     except Exception:
+        LOGGER.error(f"[PROCESS ERROR]\n{format_exc()}")
         return None
 
 
 async def get_valid_stream(song):
     try:
+        LOGGER.debug(f"[VALIDATE STREAM] {song.get('url')}")
+
         if not await is_stream_valid(song["stream"]):
+            LOGGER.warning("[STREAM EXPIRED → REFETCHING]")
+
             new = await resolve(
-                song["url"],
+                query=song["url"],
                 video=song["is_video"],
                 user_id=song["requested_by"]["id"]
             )
+
             if new:
                 song["stream"] = new[0]["stream"]
+                LOGGER.info("[STREAM REFRESHED]")
 
         return song["stream"]
 
     except Exception:
+        LOGGER.error(f"[STREAM VALIDATION ERROR]\n{format_exc()}")
         return song.get("stream")
-
-
-if __name__ == "__main__":
-    async def main():
-        q = input("Enter query/url/playlist: ")
-        data = await resolve(q)
-
-        if not data:
-            print("No result")
-            return
-
-        song = data[0]
-
-        print("Title:", song["title"])
-        print("Channel:", song["channel"])
-
-        stream = await get_valid_stream(song)
-        print("Stream:", stream)
-
-    asyncio.run(main())
