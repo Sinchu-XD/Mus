@@ -115,7 +115,10 @@ async def process(item, url, extractor, cookies, video, user_id):
             "thumb": item.get("thumbnail") or yt_thumbnail(url),
             "stream": stream,
             "is_video": video,
-            "requested_by": user_id
+            "requested_by": {
+                "id": user_id,
+                "first_name": "User"
+            }
         })
 
     except:
