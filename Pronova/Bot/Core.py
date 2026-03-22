@@ -14,3 +14,5 @@ user = Client(
     api_hash=API_HASH,
     session_string=SESSION_STRING
 )
+
+engine = VoiceEngine(user, cookies=COOKIES_PATH)
