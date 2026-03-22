@@ -1,9 +1,9 @@
 import asyncio
 
-from AbhiCalls.yt import resolve_query
-from AbhiCalls.models import Song
-from AbhiCalls.player import Player
-from AbhiCalls.settings import settings
+from Pronova.Utils.YouTube import resolve_query
+from Pronova.Utils.Models import Song
+from .Play import Player
+from .Settings import settings
 
 
 class VoiceController:
