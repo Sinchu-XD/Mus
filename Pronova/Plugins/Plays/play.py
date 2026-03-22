@@ -8,27 +8,51 @@ from Pronova.Utils.Queue import queue
 from Pronova.Utils.Assistant import get_ass
 
 
-async def play_next(core, chat_id):
+async def play_next(chat_id):
+    from Pronova.Utils.Queue import queue
+    from Pronova.Utils.YouTube import get_valid_stream
+    from Pronova.Player.Play import play
+    from Pronova import core
+
     next_song = await queue.next(chat_id)
 
     if not next_song:
+        print("QUEUE EMPTY, LEAVING VC")
+        try:
+            await core.core.leave_call(chat_id)
+        except Exception as e:
+            print("LEAVE ERROR:", e)
         return
 
-    stream = await get_valid_stream(next_song)
+    print("PLAYING NEXT:", next_song.get("title"))
 
-    await play(core.core, chat_id, stream, video=False, plugin=core.plugin, song=next_song)
-    queue.set_start(chat_id)
+    try:
+        stream = await get_valid_stream(next_song)
+
+        await play(
+            core.core,
+            chat_id,
+            stream,
+            video=False,
+            plugin=core.plugin,
+            song=next_song
+        )
+
+        queue.set_start(chat_id)
+
+    except Exception as e:
+        print("PLAY NEXT ERROR:", e)
 
 
 def register(app, core):
-    core.on_end = lambda chat_id: play_next(core, chat_id)
+    core.on_end = play_next
 
     @app.on_message(filters.command("play") & filters.group)
     async def play_cmd(_, message: Message):
         chat_id = message.chat.id
         user_id = message.from_user.id
 
-        if user:
+        if user is not None:
             ok = await get_ass(chat_id, message)
             if not ok:
                 return
