@@ -1,4 +1,3 @@
-import time
 import aiohttp
 from .Core import db
 
@@ -8,8 +7,8 @@ _session = None
 
 async def get_session():
     global _session
-    if _session is None:
-        timeout = aiohttp.ClientTimeout(total=5)
+    if _session is None or _session.closed:
+        timeout = aiohttp.ClientTimeout(total=8)
         _session = aiohttp.ClientSession(timeout=timeout)
     return _session
 
@@ -17,9 +16,9 @@ async def get_session():
 async def is_stream_valid(url):
     try:
         session = await get_session()
-        async with session.head(url, allow_redirects=True) as resp:
+        async with session.get(url, allow_redirects=True) as resp:
             return resp.status == 200
-    except:
+    except Exception:
         return False
 
 
@@ -29,15 +28,8 @@ async def get_stream_cache(key):
         if not data:
             return None
 
-        stream = data.get("stream")
-        if not stream:
-            return None
-
-        if await is_stream_valid(stream):
-            return stream
-
-        return None
-    except:
+        return data.get("stream")
+    except Exception:
         return None
 
 
@@ -47,11 +39,16 @@ async def set_stream_cache(key, stream):
             {"_id": key},
             {
                 "$set": {
-                    "stream": stream,
-                    "time": time.time()
+                    "stream": stream
                 }
             },
             upsert=True
         )
-    except:
+    except Exception:
         pass
+
+
+async def close_session():
+    global _session
+    if _session and not _session.closed:
+        await _session.close()
