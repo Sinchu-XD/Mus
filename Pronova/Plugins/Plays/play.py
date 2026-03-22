@@ -4,6 +4,7 @@ from pyrogram.types import Message
 from Pronova.Player.Play import play
 from Pronova.Utils.YouTube import resolve, get_valid_stream
 from Pronova.Utils.Queue import queue
+from Pronova.Utils.Queue import get_ass
 
 
 async def play_next(core, chat_id):
@@ -26,6 +27,11 @@ def register(app, core):
         chat_id = message.chat.id
         user_id = message.from_user.id
 
+        if user:
+            ok = await get_ass(chat_id, message)
+            if not ok:
+                return
+    
         if message.reply_to_message and message.reply_to_message.audio:
             audio = message.reply_to_message.audio
 
@@ -73,3 +79,4 @@ def register(app, core):
             else:
                 if core.plugin:
                     await core.plugin.on_queue_add(chat_id, song, pos)
+                    
