@@ -6,5 +6,12 @@ class EngineCore:
         self.app = app
         self.core = PyTgCalls(app)
 
+        # hooks
+        self.on_end = None
+        self.on_vc_closed = None
+
+        # plugin (optional)
+        self.plugin = None
+
     async def start(self):
         await self.core.start()
