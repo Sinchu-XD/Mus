@@ -192,6 +192,50 @@ class Plugin:
         except Exception:
             print(format_exc())
 
+        async def on_seek(self, chat_id, song, seconds):
+
+        msg = self.now_playing_msg.get(chat_id)
+        if not msg:
+            return
+
+        direction = "Fᴏʀᴡᴀʀᴅᴇᴅ" if seconds > 0 else "Rᴇᴡɪɴᴅᴇᴅ"
+
+        caption, entities = build_caption(
+            song.title,
+            song.url,
+            song.duration_text,
+            song.requested_by,
+            header=f"{direction} {abs(seconds)}s\n\nNᴏᴡ Pʟᴀʏɪɴɢ"
+        )
+
+        try:
+            await msg.delete()
+        except:
+            pass
+
+        try:
+            thumb = await get_thumb(
+                title=song.title,
+                duration=song.duration_text,
+                thumbnail=song.thumb,
+                videoid="seek"
+            )
+
+            new_msg = await self.app.send_photo(
+                chat_id,
+                photo=thumb,
+                caption=caption,
+                caption_entities=entities,
+                reply_markup=control_buttons()
+            )
+
+            self.now_playing_msg[chat_id] = new_msg
+
+        except Exception:
+            print(format_exc())
+
+    
+
     async def on_song_end(self, chat_id, song):
         msg = self.now_playing_msg.pop(chat_id, None)
 
