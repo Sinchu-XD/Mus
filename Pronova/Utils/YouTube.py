@@ -13,8 +13,8 @@ from Pronova.Database import (
     is_stream_valid
 )
 
+from Config import COOKIES_PATH
 
-COOKIES_PATH = "cookies.txt"
 
 PLAYLIST_REGEX = re.compile(r"(list=)")
 YOUTUBE_REGEX = re.compile(r"(youtube\.com|youtu\.be|music\.youtube\.com)")
@@ -44,7 +44,17 @@ def extract_channel(item):
 
 
 def clean(d):
-    return {k: v for k, v in d.items() if v}
+    return {k: v for k, v in d.items() if v is not None}
+
+
+def format_duration(d):
+    try:
+        if isinstance(d, str):
+            return d
+        m, s = divmod(int(d), 60)
+        return f"{m}:{str(s).zfill(2)}"
+    except:
+        return "0:00"
 
 
 async def safe_extract(extractor, url, cookies):
@@ -53,7 +63,8 @@ async def safe_extract(extractor, url, cookies):
             if inspect.iscoroutinefunction(extractor):
                 return await extractor(url, cookies)
             return await asyncio.to_thread(extractor, url, cookies)
-        except:
+        except Exception as e:
+            print(f"Extract retry failed: {e}")
             continue
     print("Extraction Failed:", url)
     return None
@@ -76,11 +87,20 @@ async def resolve(query, video=False, user_id=None):
                 for item in playlist if item.get("url")
             ]
 
-            results = await asyncio.gather(*tasks)
-            return [r for r in results if r]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            return [r for r in results if r and not isinstance(r, Exception)]
 
         if YOUTUBE_REGEX.search(query):
-            return [await process({"url": query}, query, extractor, cookies, video, user_id)]
+            return [
+                await process(
+                    {"url": query, "title": "Unknown"},
+                    query,
+                    extractor,
+                    cookies,
+                    video,
+                    user_id
+                )
+            ]
 
         res = await Search(query, limit=1)
         if not res or not res.get("main_results"):
@@ -110,6 +130,7 @@ async def process(item, url, extractor, cookies, video, user_id):
             "title": item.get("title"),
             "url": url,
             "duration": item.get("duration"),
+            "duration_text": format_duration(item.get("duration")),
             "views": item.get("views"),
             "channel": extract_channel(item),
             "thumb": item.get("thumbnail") or yt_thumbnail(url),
@@ -121,17 +142,26 @@ async def process(item, url, extractor, cookies, video, user_id):
             }
         })
 
-    except:
+    except Exception as e:
+        print(f"Process error: {e}")
         return None
 
 
 async def get_valid_stream(song):
-    if not await is_stream_valid(song["stream"]):
-        print("Refreshing stream")
-        new = await resolve(song["url"], video=song["is_video"])
-        if new:
-            song["stream"] = new[0]["stream"]
-    return song["stream"]
+    try:
+        if not await is_stream_valid(song["stream"]):
+            print("Refreshing stream")
+            new = await resolve(
+                song["url"],
+                video=song["is_video"],
+                user_id=song["requested_by"]["id"]
+            )
+            if new:
+                song["stream"] = new[0]["stream"]
+        return song["stream"]
+    except Exception as e:
+        print(f"Stream validation error: {e}")
+        return song.get("stream")
 
 
 if __name__ == "__main__":
