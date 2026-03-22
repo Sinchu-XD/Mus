@@ -42,6 +42,7 @@ async def setup_database():
 
         (db.sudo_users, "user_id", True),
         (db.yt_stream_cache, "_id", True),
+        (db.yt_search_cache, "_id", True),
     ]
 
     try:
