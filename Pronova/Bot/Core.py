@@ -1,5 +1,6 @@
 from pyrogram import Client
 from Config import *
+from Pronova.Player.Core import VoiceEngine
 
 bot = Client(
     "music_bot",
