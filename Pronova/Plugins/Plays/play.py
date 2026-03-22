@@ -4,7 +4,7 @@ from pyrogram.types import Message
 from Pronova.Player.Play import play
 from Pronova.Utils.YouTube import resolve, get_valid_stream
 from Pronova.Utils.Queue import queue
-from Pronova.Utils.Queue import get_ass
+from Pronova.Utils.Assistant import get_ass
 
 
 async def play_next(core, chat_id):
