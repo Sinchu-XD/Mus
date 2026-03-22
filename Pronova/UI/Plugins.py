@@ -1,14 +1,12 @@
 import os
 import asyncio
-from traceback import format_exc
+import random
+import re
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, MessageEntity
 from pyrogram import enums
 
 from Pronova.Utils.Thumbnail import get_thumb
-
-import random
-import re
 
 
 def clean_html(text: str):
@@ -41,11 +39,12 @@ def utf16_len(text: str):
 
 
 def build_caption(title, url, duration, requester, header="Nᴏᴡ Pʟᴀʏɪɴɢ", position=None):
-    title = (title or "Unknown")[:30]
 
-    if isinstance(requester, dict):
-        user_id = requester.get("id")
-        name = clean_html(str(requester.get("first_name", "User")))
+    title = title[:30]
+
+    if hasattr(requester, "id"):
+        user_id = requester.id
+        name = clean_html(requester.first_name)
     else:
         user_id = None
         name = clean_html(str(requester))
@@ -105,12 +104,34 @@ VC_END_DELETE_AFTER = 10
 
 
 def control_buttons():
-    return InlineKeyboardMarkup([[
+    texts = os.getenv("TEXTS")
+    links = os.getenv("LINKS")
+
+    buttons = [[
         InlineKeyboardButton("▷", callback_data="vc_resume"),
         InlineKeyboardButton("II", callback_data="vc_pause"),
         InlineKeyboardButton("▢", callback_data="vc_end"),
         InlineKeyboardButton("‣‣I", callback_data="vc_skip"),
-    ]])
+    ]]
+
+    if texts and links:
+        text_list = [t.strip() for t in texts.split(",")]
+        link_list = [l.strip() for l in links.split(",")]
+
+        row = []
+
+        for t, l in zip(text_list, link_list):
+            if t and l:
+                row.append(InlineKeyboardButton(t, url=l))
+
+                if len(row) == 2:
+                    buttons.append(row)
+                    row = []
+
+        if row:
+            buttons.append(row)
+
+    return InlineKeyboardMarkup(buttons)
 
 
 class Plugin:
@@ -121,11 +142,12 @@ class Plugin:
         self.now_playing_msg = {}
 
     async def on_song_start(self, chat_id, song):
+
         caption, entities = build_caption(
-            song.get("title"),
-            song.get("url"),
-            song.get("duration_text"),
-            song.get("requested_by")
+            song.title,
+            song.url,
+            song.duration_text,
+            song.requested_by
         )
 
         old = self.now_playing_msg.get(chat_id)
@@ -138,11 +160,11 @@ class Plugin:
 
         try:
             thumb = await get_thumb(
-                title=song.get("title"),
-                duration=song.get("duration_text"),
-                thumbnail=song.get("thumb"),
-                channel=song.get("channel", "YouTube"),
-                views=song.get("views", "Unknown"),
+                title=song.title,
+                duration=song.duration_text,
+                thumbnail=song.thumb,
+                channel=getattr(song, "channel", "YouTube"),
+                views=getattr(song, "views", "Unknown"),
                 videoid="np"
             )
 
@@ -156,41 +178,8 @@ class Plugin:
 
             self.now_playing_msg[chat_id] = msg
 
-        except Exception:
-            print(format_exc())
-
-    async def on_queue_add(self, chat_id, song, position):
-        if position == 1:
-            return
-
-        caption, entities = build_caption(
-            song.get("title"),
-            song.get("url"),
-            song.get("duration_text"),
-            song.get("requested_by"),
-            header="Aᴅᴅᴇᴅ Tᴏ Qᴜᴇᴜᴇ",
-            position=position
-        )
-
-        try:
-            thumb = await get_thumb(
-                title=song.get("title"),
-                duration=song.get("duration_text"),
-                thumbnail=song.get("thumb"),
-                videoid="queue"
-            )
-
-            msg = await self.app.send_photo(
-                chat_id,
-                photo=thumb,
-                caption=caption,
-                caption_entities=entities
-            )
-
-            asyncio.create_task(self._auto_delete(msg, QUEUE_DELETE_AFTER))
-
-        except Exception:
-            print(format_exc())
+        except:
+            pass
 
     async def on_seek(self, chat_id, song, seconds):
 
@@ -218,6 +207,8 @@ class Plugin:
                 title=song.title,
                 duration=song.duration_text,
                 thumbnail=song.thumb,
+                channel=getattr(song, "channel", "YouTube"),
+                views=getattr(song, "views", "Unknown"),
                 videoid="seek"
             )
 
@@ -231,12 +222,47 @@ class Plugin:
 
             self.now_playing_msg[chat_id] = new_msg
 
-        except Exception:
-            print(format_exc())
+        except:
+            pass
 
-    
+    async def on_queue_add(self, chat_id, song, position):
+
+        if position == 1:
+            return
+
+        caption, entities = build_caption(
+            song.title,
+            song.url,
+            song.duration_text,
+            song.requested_by,
+            header="Aᴅᴅᴇᴅ Tᴏ Qᴜᴇᴜᴇ",
+            position=position
+        )
+
+        try:
+            thumb = await get_thumb(
+                title=song.title,
+                duration=song.duration_text,
+                thumbnail=song.thumb,
+                channel=getattr(song, "channel", "YouTube"),
+                views=getattr(song, "views", "Unknown"),
+                videoid="queue"
+            )
+
+            msg = await self.app.send_photo(
+                chat_id,
+                photo=thumb,
+                caption=caption,
+                caption_entities=entities
+            )
+
+            asyncio.create_task(self._auto_delete(msg, QUEUE_DELETE_AFTER))
+
+        except:
+            pass
 
     async def on_song_end(self, chat_id, song):
+
         msg = self.now_playing_msg.pop(chat_id, None)
 
         if msg:
@@ -246,6 +272,7 @@ class Plugin:
                 pass
 
     async def on_vc_closed(self, chat_id):
+
         msg = self.now_playing_msg.pop(chat_id, None)
 
         if msg:
@@ -262,10 +289,11 @@ class Plugin:
 
             asyncio.create_task(self._auto_delete(msg, VC_END_DELETE_AFTER))
 
-        except Exception:
-            print(format_exc())
+        except:
+            pass
 
     async def _auto_delete(self, msg, delay):
+
         try:
             await asyncio.sleep(delay)
             await msg.delete()
