@@ -1,4 +1,4 @@
-from Bot.Database import db
+from .Core import db
 
 
 async def set_admin_only(chat_id: int, value: bool):
