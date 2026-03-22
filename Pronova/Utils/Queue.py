@@ -22,12 +22,10 @@ class MusicQueue:
     async def add(self, chat_id, song, priority=False):
         async with self._lock(chat_id):
             q = self._queue(chat_id)
-
             if priority:
                 q.appendleft(song)
             else:
                 q.append(song)
-
             return len(q)
 
     async def get_current(self, chat_id):
@@ -37,16 +35,13 @@ class MusicQueue:
     async def next(self, chat_id):
         async with self._lock(chat_id):
             q = self._queue(chat_id)
-
             if not q:
                 return None
 
             current = q.popleft()
-
             self.history.setdefault(chat_id, deque(maxlen=20)).append(current)
 
             loop = self.loop_count.get(chat_id, 1)
-
             if loop > 1:
                 self.loop_count[chat_id] -= 1
                 q.appendleft(current)
@@ -69,18 +64,22 @@ class MusicQueue:
 
     async def insert(self, chat_id, index, song):
         async with self._lock(chat_id):
-            self._queue(chat_id).insert(index, song)
+            q = self._queue(chat_id)
+            index = max(0, min(index, len(q)))
+            q.insert(index, song)
 
     async def remove(self, chat_id, index):
         async with self._lock(chat_id):
             q = self._queue(chat_id)
             if 0 <= index < len(q):
-                return q.pop(index)
+                song = q[index]
+                del q[index]
+                return song
 
     async def move(self, chat_id, old, new):
         async with self._lock(chat_id):
             q = self._queue(chat_id)
-            if 0 <= old < len(q) and 0 <= new < len(q):
+            if 0 <= old < len(q) and 0 <= new <= len(q):
                 song = q[old]
                 del q[old]
                 q.insert(new, song)
@@ -101,7 +100,7 @@ class MusicQueue:
         async with self._lock(chat_id):
             q = self._queue(chat_id)
             self.queues[chat_id] = deque(
-                [s for s in q if s.get("requested_by") != user_id]
+                [s for s in q if s.get("requested_by", {}).get("id") != user_id]
             )
 
     async def clear(self, chat_id):
@@ -117,7 +116,7 @@ class MusicQueue:
             voters = self.votes.setdefault(chat_id, set())
             voters.add(user_id)
 
-            required = max(1, total_members // 2)
+            required = max(1, (total_members // 2) + 1)
 
             if len(voters) >= required:
                 self.votes[chat_id] = set()
@@ -166,7 +165,7 @@ class MusicQueue:
                 sec = 0
 
             if i == 0:
-                sec -= self.elapsed(chat_id)
+                sec = max(sec - self.elapsed(chat_id), 0)
 
             total += max(sec, 0)
 
