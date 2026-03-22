@@ -1,6 +1,6 @@
 from pyrogram.enums import ChatMemberStatus
 from Pronova.Database import is_sudo, is_auth
-
+from Config import *
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
