@@ -5,7 +5,7 @@ from Pronova.Player.Core import EngineCore
 
 from Pronova.UI.Plugins import Plugin
 
-from Pronova.Plugins.Plays.play import play as play_module
+from Pronova.Plugins.Plays import play as play_module
 #from Play import vplay as vplay_module
 
 
