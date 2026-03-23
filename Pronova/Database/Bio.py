@@ -20,6 +20,7 @@ async def remove_verified(user_id: int):
 
 async def add_warn(chat_id: int, user_id: int):
     key = f"{chat_id}:{user_id}"
+    now = int(time.time())
 
     data = await db.warns.find_one({"_id": key})
 
@@ -27,7 +28,7 @@ async def add_warn(chat_id: int, user_id: int):
         await db.warns.insert_one({
             "_id": key,
             "count": 1,
-            "time": int(time.time())
+            "time": now
         })
         return 1
 
@@ -35,21 +36,19 @@ async def add_warn(chat_id: int, user_id: int):
 
     await db.warns.update_one(
         {"_id": key},
-        {"$set": {"count": count, "time": int(time.time())}}
+        {"$set": {"count": count, "time": now}}
     )
 
     return count
 
 
 async def get_warn(chat_id: int, user_id: int):
-    key = f"{chat_id}:{user_id}"
-    data = await db.warns.find_one({"_id": key})
+    data = await db.warns.find_one({"_id": f"{chat_id}:{user_id}"})
     return data.get("count", 0) if data else 0
 
 
 async def reset_warn(chat_id: int, user_id: int):
-    key = f"{chat_id}:{user_id}"
-    await db.warns.delete_one({"_id": key})
+    await db.warns.delete_one({"_id": f"{chat_id}:{user_id}"})
 
 
 async def set_bio_cache(user_id: int, bio: str):
