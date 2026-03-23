@@ -35,7 +35,7 @@ def yt_thumbnail(url):
         else:
             return None
         return f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
-    except Exception:
+    except:
         return None
 
 
@@ -45,7 +45,7 @@ def extract_channel(item):
         if isinstance(c, dict):
             return c.get("name")
         return c
-    except Exception:
+    except:
         return None
 
 
@@ -64,7 +64,7 @@ def format_duration(d):
 
 
 async def safe_extract(extractor, url, cookies):
-    for _ in range(4):
+    for _ in range(3):
         try:
             if inspect.iscoroutinefunction(extractor):
                 return await extractor(url, cookies)
@@ -73,19 +73,14 @@ async def safe_extract(extractor, url, cookies):
             await asyncio.sleep(1)
     return None
 
-def is_valid_url(url):
-    return isinstance(url, str) and url.startswith("http") and len(url) > 20
-    
+
 async def resolve(query, video=False, user_id=None):
     try:
-        LOGGER.info(f"[RESOLVE] {query}")
-
         cookies = COOKIES_PATH if (COOKIES_PATH and os.path.exists(COOKIES_PATH)) else None
         extractor = get_video_stream if video else get_stream
 
         if PLAYLIST_REGEX.search(query):
             key = f"playlist::{query}"
-
             cache = await get_search_cache(key)
             if cache:
                 return cache
@@ -105,75 +100,51 @@ async def resolve(query, video=False, user_id=None):
             final = [r for r in results if r and not isinstance(r, Exception)]
 
             await set_search_cache(key, final)
-
             return final
 
         if YOUTUBE_REGEX.search(query):
             key = f"url::{query}"
-
             cache = await get_search_cache(key)
             if cache:
                 return cache
 
             try:
                 res = await Search(query, limit=1)
-
                 if res and res.get("main_results"):
                     item = res["main_results"][0]
-
-                    if item.get("url") and query not in item.get("url"):
-                        item["url"] = query
+                    item["url"] = query
                 else:
-                    item = {"url": query, "title": "Unknown"}
-
-            except Exception:
-                item = {"url": query, "title": "Unknown"}
+                    item = {"url": query, "title": "Unknown", "views": 0}
+            except:
+                item = {"url": query, "title": "Unknown", "views": 0}
 
             result = [
-                await process(
-                    item,
-                    query,
-                    extractor,
-                    cookies,
-                    video,
-                    user_id
-                )
+                await process(item, query, extractor, cookies, video, user_id)
             ]
 
             await set_search_cache(key, result)
-
             return result
 
         key = f"search::{query}"
-
         cache = await get_search_cache(key)
         if cache:
             return cache
 
         res = await Search(query, limit=1)
-
         if not res or not res.get("main_results"):
             return None
 
         item = res["main_results"][0]
 
         result = [
-            await process(
-                item,
-                item.get("url"),
-                extractor,
-                cookies,
-                video,
-                user_id
-            )
+            await process(item, item.get("url"), extractor, cookies, video, user_id)
         ]
 
         await set_search_cache(key, result)
-
         return result
 
     except Exception:
-        LOGGER.error(f"[RESOLVE ERROR]\n{format_exc()}")
+        LOGGER.error(format_exc())
         return None
 
 
@@ -183,19 +154,13 @@ async def process(item, url, extractor, cookies, video, user_id):
 
         stream = await get_stream_cache(key)
 
-        if stream:
-            if not isinstance(stream, str) or not stream.startswith("http"):
-                stream = None
-
-        if not stream:
+        if not stream or not await is_stream_valid(stream):
             stream = await safe_extract(extractor, url, cookies)
 
-            if not stream or not isinstance(stream, str) or not stream.startswith("http"):
+            if not stream or not isinstance(stream, str):
                 return None
 
             await set_stream_cache(key, stream)
-
-        LOGGER.info(f"[PROCESS STREAM] {stream}")
 
         return clean({
             "title": item.get("title"),
@@ -214,19 +179,15 @@ async def process(item, url, extractor, cookies, video, user_id):
         })
 
     except Exception:
-        LOGGER.error(f"[PROCESS ERROR]\n{format_exc()}")
+        LOGGER.error(format_exc())
         return None
+
 
 async def get_valid_stream(song):
     try:
         stream = song.get("stream")
 
-        if not stream or not isinstance(stream, str) or not stream.startswith("http"):
-            stream = None
-
-        if not stream or not await is_stream_valid(stream, LOGGER):
-            LOGGER.warning("[STREAM REFRESH] Fetching new stream")
-
+        if not stream or not await is_stream_valid(stream):
             new = await resolve(
                 query=song["url"],
                 video=song["is_video"],
@@ -234,7 +195,6 @@ async def get_valid_stream(song):
             )
 
             if not new or not new[0].get("stream"):
-                LOGGER.error("[STREAM ERROR] Failed to refresh stream")
                 return None
 
             stream = new[0]["stream"]
@@ -242,10 +202,8 @@ async def get_valid_stream(song):
 
             await set_stream_cache(f"{song['url']}_{song['is_video']}", stream)
 
-            LOGGER.info(f"[NEW STREAM] {stream}")
-
         return stream
 
-    except Exception as e:
-        LOGGER.error(f"[GET STREAM ERROR] {e}")
+    except Exception:
+        LOGGER.error(format_exc())
         return None
