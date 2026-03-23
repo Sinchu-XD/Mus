@@ -2,31 +2,40 @@ from pyrogram.enums import ChatMemberStatus
 from Pronova.Database import is_sudo, is_auth, is_banned, is_gbanned
 from Pronova.Utils.Font import sc
 from Config import OWNER_ID
+from Pronova.Utils.Logger import LOGGER
 
 
 async def get_user_data(message=None, cq=None):
     if message:
-        return message.from_user, message.chat.id
+        return message.from_user, message.chat.id, message
     if cq:
-        return cq.from_user, cq.message.chat.id
-    return None, None
+        return cq.from_user, cq.message.chat.id, cq.message
+    return None, None, None
 
 
-async def check_ban(m):
-    if not m.from_user:
+async def deny(m, text="not allowed"):
+    try:
+        await m.reply(sc(text))
+    except:
+        pass
+
+
+async def check_ban(message=None, cq=None):
+    user, chat_id, m = await get_user_data(message, cq)
+
+    if not user:
         return True
 
-    uid = m.from_user.id
-    chat_id = m.chat.id
+    uid = user.id
 
     if await is_gbanned(uid):
         LOGGER.warning(f"[GBANNED USER] {uid}")
-        await m.reply(sc("you are gbanned"))
+        await deny(m, "you are gbanned")
         return True
 
     if await is_banned(chat_id, uid):
         LOGGER.warning(f"[BANNED IN CHAT] {uid} in {chat_id}")
-        await m.reply(sc("you are banned in this chat"))
+        await deny(m, "you are banned in this chat")
         return True
 
     return False
@@ -44,16 +53,20 @@ async def is_admin(client, chat_id, user_id):
 
 
 async def owner_only(client, message=None, cq=None):
-    user, _ = await get_user_data(message, cq)
+    user, _, m = await get_user_data(message, cq)
 
     if not user:
         return False
 
-    return user.id == OWNER_ID
+    if user.id == OWNER_ID:
+        return True
+
+    await deny(m, "only bot owner can use this")
+    return False
 
 
 async def sudo_only(client, message=None, cq=None):
-    user, _ = await get_user_data(message, cq)
+    user, _, m = await get_user_data(message, cq)
 
     if not user:
         return False
@@ -63,11 +76,15 @@ async def sudo_only(client, message=None, cq=None):
     if uid == OWNER_ID:
         return True
 
-    return await is_sudo(uid)
+    if await is_sudo(uid):
+        return True
+
+    await deny(m, "only sudo users can use this")
+    return False
 
 
 async def admin_only(client, message=None, cq=None):
-    user, chat_id = await get_user_data(message, cq)
+    user, chat_id, m = await get_user_data(message, cq)
 
     if not user:
         return False
@@ -75,9 +92,11 @@ async def admin_only(client, message=None, cq=None):
     uid = user.id
 
     if await is_gbanned(uid):
+        await deny(m, "you are gbanned")
         return False
 
     if await is_banned(chat_id, uid):
+        await deny(m, "you are banned in this chat")
         return False
 
     if uid == OWNER_ID:
@@ -92,4 +111,5 @@ async def admin_only(client, message=None, cq=None):
     if await is_auth(chat_id, uid):
         return True
 
+    await deny(m, "only admins and authorized users can use this")
     return False
