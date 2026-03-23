@@ -196,28 +196,41 @@ async def get_valid_stream(song):
         if stream and await is_stream_valid(stream):
             return stream
 
-        for _ in range(2):
-            new = await resolve(
-                query=song["url"],
-                video=song["is_video"],
-                user_id=song["requested_by"]["id"]
-            )
+        new = await resolve(
+            query=song["url"],
+            video=song["is_video"],
+            user_id=song["requested_by"]["id"]
+        )
 
-            if new and isinstance(new, list):
-                first = next((x for x in new if x and isinstance(x, dict) and x.get("stream")), None)
+        LOGGER.info(f"[DEBUG RESOLVE RETURN] TYPE: {type(new)} DATA: {new}")
 
-                if first:
-                    stream = first["stream"]
-                    song["stream"] = stream
+        if not new:
+            LOGGER.error("[DEBUG] resolve returned None or empty")
+            return None
 
-                    await set_stream_cache(f"{song['url']}_{song['is_video']}", stream)
+        if not isinstance(new, list):
+            LOGGER.error("[DEBUG] resolve not list")
+            return None
 
-                    return stream
+        for i, item in enumerate(new):
+            LOGGER.info(f"[DEBUG ITEM {i}] TYPE: {type(item)} DATA: {item}")
 
-            await asyncio.sleep(1)
+        first = next((x for x in new if x and isinstance(x, dict)), None)
 
-        LOGGER.error("[STREAM FAILED COMPLETELY]")
-        return None
+        if not first:
+            LOGGER.error("[DEBUG] no valid dict found in resolve result")
+            return None
+
+        if not first.get("stream"):
+            LOGGER.error("[DEBUG] stream missing in first item")
+            return None
+
+        stream = first["stream"]
+        song["stream"] = stream
+
+        await set_stream_cache(f"{song['url']}_{song['is_video']}", stream)
+
+        return stream
 
     except Exception:
         LOGGER.error(format_exc())
