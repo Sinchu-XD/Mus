@@ -2,6 +2,7 @@ import asyncio
 from traceback import format_exc
 
 from Pronova.Utils.YouTube import resolve as resolve_query
+from Pronova.Utils.YouTube import get_valid_stream 
 from Pronova.Utils.Models import Song
 from .Play import Player
 from .Settings import settings
@@ -68,12 +69,33 @@ class VoiceController:
             )
 
             try:
+                # ✅ FIX: Always validate / refresh stream
+                song.stream = await get_valid_stream({
+                    "stream": song.stream,
+                    "url": song.url,
+                    "is_video": song.is_video,
+                    "requested_by": {
+                        "id": requested_by
+                    }
+                })
+
+                # ❌ Block empty / invalid stream
+                if (
+                    not song.stream
+                    or not isinstance(song.stream, str)
+                    or not song.stream.startswith("http")
+                ):
+                    LOGGER.error(f"[INVALID STREAM BLOCKED] {song.title}")
+                    continue
+
+                LOGGER.info(f"[FINAL STREAM] {song.title} -> {song.stream}")
+
                 pos = await self.player.play(chat_id, song, video=song.is_video)
+
             except Exception:
                 LOGGER.error(f"[PLAYER ERROR]\n{format_exc()}")
                 return False, "Player error"
 
-            # ❗ Duplicate spam avoid
             if pos == 1:
                 LOGGER.info(f"[START STREAM] {song.title}")
 
@@ -127,7 +149,6 @@ class VoiceController:
 
 
     async def stop(self, chat_id):
-        # ✅ spam fix
         if chat_id not in self.player.queues:
             return
 
@@ -184,7 +205,6 @@ class VoiceController:
             self._ending.discard(chat_id)
 
     async def _on_vc_closed(self, chat_id):
-        # ✅ spam fix
         if chat_id not in self.player.queues:
             return
 
