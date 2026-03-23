@@ -163,7 +163,13 @@ async def process(item, url, extractor, cookies, video, user_id):
         if not stream:
             stream = await safe_extract(extractor, url, cookies)
 
+            if not stream:
+                LOGGER.warning("[EXTRACT FAIL] Retrying without cache/cookies")
+
+                stream = await safe_extract(extractor, url, None)
+
             if not stream or not isinstance(stream, str) or not stream.startswith("http"):
+                LOGGER.error(f"[FINAL EXTRACT FAIL] {url}")
                 return None
 
             await set_stream_cache(key, stream)
