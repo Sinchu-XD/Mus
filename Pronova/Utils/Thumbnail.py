@@ -345,7 +345,7 @@ async def get_thumb(title, duration, thumbnail, channel=None, views=None, videoi
 
 
         # Views Count (slightly smaller but still bigger than before)
-        views_text = f"{views[:23]} views"
+        views_text = f"{views[:23]}"
 
         views_font = ImageFont.truetype("font.ttf", 28)
 
