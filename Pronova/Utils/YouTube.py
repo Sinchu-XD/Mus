@@ -240,6 +240,8 @@ async def get_valid_stream(song):
             stream = new[0]["stream"]
             song["stream"] = stream
 
+            await set_stream_cache(f"{song['url']}_{song['is_video']}", stream)
+
             LOGGER.info(f"[NEW STREAM] {stream}")
 
         return stream
