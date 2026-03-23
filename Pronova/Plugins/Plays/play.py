@@ -5,7 +5,7 @@ from Config import *
 from Pronova.Bot import bot, engine
 from Pronova.Utils.Assistant import get_ass
 from Pronova.Utils.Font import sc
-from Pronova.Utils.Permission import admin_only, check_ban
+from Pronova.Utils.Allow import admin_only, check_ban
 
 from Pronova.Database.Songs import inc_song_play
 from Pronova.Database.Users import add_user
