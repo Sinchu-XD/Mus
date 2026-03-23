@@ -66,3 +66,11 @@ from .Mode import (
     set_admin_only,
     is_admin_only
 )
+
+from .Bio import (
+    add_verified,
+    is_verified,
+    add_warn,
+    get_bio_cache,
+    set_bio_cache
+)
