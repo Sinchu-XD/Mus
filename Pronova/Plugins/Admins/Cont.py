@@ -1,14 +1,11 @@
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus
 import time
 
 from Pronova.Bot import bot, engine
 from Pronova.Utils.Font import sc
-from Pronova.Database import is_auth
-from Pronova.Database import is_banned, is_gbanned
+from Pronova.Utils.Permission import admin_only
 
 
-ADMIN_CACHE = {}
 LAST_ACTION = {}
 
 
@@ -21,58 +18,6 @@ def can_send(chat_id, cooldown=3):
     return True
 
 
-async def is_admin(chat_id, user_id):
-    if not user_id:
-        return False
-    try:
-        member = await bot.get_chat_member(chat_id, user_id)
-        return member.status in (
-            ChatMemberStatus.ADMINISTRATOR,
-            ChatMemberStatus.OWNER
-        )
-    except:
-        return False
-
-
-async def check_ban(m):
-    if not m.from_user:
-        return True
-
-    uid = m.from_user.id
-    chat_id = m.chat.id
-
-    if await is_gbanned(uid):
-        return True
-
-    if await is_banned(chat_id, uid):
-        return True
-
-    return False
-
-
-async def admin_only(m):
-    if not m.from_user:
-        return False
-
-    uid = m.from_user.id
-    chat_id = m.chat.id
-    key = f"{chat_id}:{uid}"
-
-    if key in ADMIN_CACHE:
-        return ADMIN_CACHE[key]
-
-    if await check_ban(m):
-        ADMIN_CACHE[key] = False
-        return False
-
-    if await is_admin(chat_id, uid) or await is_auth(chat_id, uid):
-        ADMIN_CACHE[key] = True
-        return True
-
-    ADMIN_CACHE[key] = False
-    return False
-
-
 async def safe_vc(action, *args):
     try:
         return await action(*args)
@@ -82,45 +27,48 @@ async def safe_vc(action, *args):
 
 async def safe_reply(m, text):
     if can_send(m.chat.id):
-        await m.reply(text, disable_notification=True)
+        try:
+            await m.reply(text, disable_notification=True)
+        except:
+            pass
 
 
-@bot.on_message(filters.command("skip"))
+@bot.on_message(filters.command("skip") & filters.group)
 async def skip(_, m):
-    if not await admin_only(m):
+    if not await admin_only(bot, message=m):
         return
     await safe_vc(engine.vc.skip, m.chat.id)
     await safe_reply(m, sc("song skipped"))
 
 
-@bot.on_message(filters.command(["stop", "end"]))
+@bot.on_message(filters.command(["stop", "end"]) & filters.group)
 async def stop(_, m):
-    if not await admin_only(m):
+    if not await admin_only(bot, message=m):
         return
     if m.chat.id in engine.vc.player.queues:
         await safe_vc(engine.vc.stop, m.chat.id)
     await safe_reply(m, sc("playback ended"))
 
 
-@bot.on_message(filters.command("pause"))
+@bot.on_message(filters.command("pause") & filters.group)
 async def pause(_, m):
-    if not await admin_only(m):
+    if not await admin_only(bot, message=m):
         return
     await safe_vc(engine.vc.pause, m.chat.id)
     await safe_reply(m, sc("paused"))
 
 
-@bot.on_message(filters.command("resume"))
+@bot.on_message(filters.command("resume") & filters.group)
 async def resume(_, m):
-    if not await admin_only(m):
+    if not await admin_only(bot, message=m):
         return
     await safe_vc(engine.vc.resume, m.chat.id)
     await safe_reply(m, sc("resumed"))
 
 
-@bot.on_message(filters.command("previous"))
+@bot.on_message(filters.command("previous") & filters.group)
 async def previous(_, m):
-    if not await admin_only(m):
+    if not await admin_only(bot, message=m):
         return
     ok = await safe_vc(engine.vc.previous, m.chat.id)
     if ok:
@@ -129,9 +77,9 @@ async def previous(_, m):
         await safe_reply(m, sc("no previous song"))
 
 
-@bot.on_message(filters.command("seek"))
+@bot.on_message(filters.command("seek") & filters.group)
 async def seek_cmd(_, m):
-    if not await admin_only(m):
+    if not await admin_only(bot, message=m):
         return
 
     if len(m.command) < 2:
@@ -149,12 +97,12 @@ async def seek_cmd(_, m):
 
     ok = await safe_vc(engine.vc.seek, m.chat.id, seconds)
     if not ok:
-        await safe_reply(m, "Seek failed")
+        await safe_reply(m, sc("seek failed"))
 
 
-@bot.on_message(filters.command("queue"))
+@bot.on_message(filters.command("queue") & filters.group)
 async def queue(_, m):
-    if not await admin_only(m):
+    if not await admin_only(bot, message=m):
         return
 
     q = engine.vc.player.queues.get(m.chat.id)
@@ -165,6 +113,7 @@ async def queue(_, m):
     text = sc("queue list") + "\n\n"
 
     for i, s in enumerate(q.items, 1):
-        text += f"{i}. {s.title}\n"
+        title = getattr(s, "title", "Unknown")
+        text += f"{i}. {title}\n"
 
     await safe_reply(m, text)
