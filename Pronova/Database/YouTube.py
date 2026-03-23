@@ -32,8 +32,8 @@ async def is_stream_valid(url, logger=None):
     try:
         session = await get_session()
 
-        expire_time = get_expire_time(url)
         now = int(time.time())
+        expire_time = get_expire_time(url)
 
         if logger:
             logger.info(f"[STREAM URL] {url}")
@@ -43,9 +43,9 @@ async def is_stream_valid(url, logger=None):
             if logger:
                 logger.info(f"[STREAM EXPIRE] {expire_time} | Remaining: {remaining}s")
 
-            if remaining <= 0:
+            if remaining <= 120:
                 if logger:
-                    logger.warning("[STREAM STATUS] EXPIRED")
+                    logger.warning("[STREAM STATUS] EXPIRED / EXPIRING SOON")
                 return False
 
         headers = {
@@ -90,15 +90,23 @@ async def get_stream_cache(key):
 
         stream = data.get("stream")
 
-        if stream:
-            expire_time = get_expire_time(stream)
-            if expire_time and expire_time < int(time.time()):
+        if not stream:
+            return None
+
+        expire_time = get_expire_time(stream)
+
+        if expire_time:
+            remaining = expire_time - int(time.time())
+
+            if remaining <= 120:
+                await db.yt_stream_cache.delete_one({"_id": key})
                 return None
 
         return stream
 
     except Exception:
         return None
+
 
 async def set_stream_cache(key, stream):
     try:
