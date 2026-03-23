@@ -82,14 +82,13 @@ async def is_stream_valid(url, logger=None):
         return False
 
 
-async def get_stream_cache(key):
+async def get_stream_cache(key, logger=None):
     try:
         data = await db.yt_stream_cache.find_one({"_id": key})
         if not data:
             return None
 
         stream = data.get("stream")
-
         if not stream:
             return None
 
@@ -97,10 +96,15 @@ async def get_stream_cache(key):
 
         if expire_time:
             remaining = expire_time - int(time.time())
-
             if remaining <= 120:
                 await db.yt_stream_cache.delete_one({"_id": key})
                 return None
+
+        is_valid = await is_stream_valid(stream, logger)
+
+        if not is_valid:
+            await db.yt_stream_cache.delete_one({"_id": key})
+            return None
 
         return stream
 
@@ -110,6 +114,9 @@ async def get_stream_cache(key):
 
 async def set_stream_cache(key, stream):
     try:
+        if not stream:
+            return
+
         await db.yt_stream_cache.update_one(
             {"_id": key},
             {
