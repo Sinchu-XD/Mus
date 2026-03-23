@@ -181,14 +181,19 @@ async def process(item, url, extractor, cookies, video, user_id):
 
         stream = await get_stream_cache(key)
 
+        # ❌ Cache invalid ho to hatao
         if stream:
-            if not await is_stream_valid(stream):
+            if not is_valid_url(stream) or not await is_stream_valid(stream):
                 stream = None
 
+        # 🔄 Fresh extract
         if not stream:
             stream = await safe_extract(extractor, url, cookies)
-            if not stream:
+
+            # ❌ Agar invalid hai to skip
+            if not is_valid_url(stream):
                 return None
+
             await set_stream_cache(key, stream)
 
         return clean({
@@ -214,17 +219,23 @@ async def process(item, url, extractor, cookies, video, user_id):
 
 async def get_valid_stream(song):
     try:
-        if not await is_stream_valid(song["stream"]):
+        stream = song.get("stream")
+
+        if not stream or not isinstance(stream, str) or not stream.startswith("http"):
+            stream = None
+
+        if not stream or not await is_stream_valid(stream):
             new = await resolve(
                 query=song["url"],
                 video=song["is_video"],
                 user_id=song["requested_by"]["id"]
             )
 
-            if new:
-                song["stream"] = new[0]["stream"]
+            if new and new[0].get("stream"):
+                stream = new[0]["stream"]
+                song["stream"] = stream
 
-        return song["stream"]
+        return stream
 
     except Exception:
         return song.get("stream")
