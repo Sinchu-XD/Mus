@@ -16,10 +16,11 @@ async def get_user_data(message=None, cq=None):
 async def deny(m, text="not allowed"):
     try:
         await m.reply(sc(text))
-    except:
-        pass
+    except Exception as e:
+        LOGGER.error(f"Deny Error: {e}")
 
 
+# 🔥 Centralized Ban Check (USE THIS EVERYWHERE)
 async def check_ban(message=None, cq=None):
     user, chat_id, m = await get_user_data(message, cq)
 
@@ -48,24 +49,30 @@ async def is_admin(client, chat_id, user_id):
             ChatMemberStatus.ADMINISTRATOR,
             ChatMemberStatus.OWNER
         )
-    except:
+    except Exception as e:
+        LOGGER.error(f"Admin Check Error: {e}")
         return False
 
 
+# 👑 OWNER ONLY
 async def owner_only(client, message=None, cq=None):
+    if await check_ban(message, cq):
+        return False
+
     user, _, m = await get_user_data(message, cq)
 
-    if not user:
-        return False
-
-    if user.id == OWNER_ID:
+    if user and user.id == OWNER_ID:
         return True
 
     await deny(m, "only bot owner can use this")
     return False
 
 
+# ⚡ SUDO ONLY
 async def sudo_only(client, message=None, cq=None):
+    if await check_ban(message, cq):
+        return False
+
     user, _, m = await get_user_data(message, cq)
 
     if not user:
@@ -73,17 +80,18 @@ async def sudo_only(client, message=None, cq=None):
 
     uid = user.id
 
-    if uid == OWNER_ID:
-        return True
-
-    if await is_sudo(uid):
+    if uid == OWNER_ID or await is_sudo(uid):
         return True
 
     await deny(m, "only sudo users can use this")
     return False
 
 
+# 🛡️ ADMIN ONLY
 async def admin_only(client, message=None, cq=None):
+    if await check_ban(message, cq):
+        return False
+
     user, chat_id, m = await get_user_data(message, cq)
 
     if not user:
@@ -91,14 +99,7 @@ async def admin_only(client, message=None, cq=None):
 
     uid = user.id
 
-    if await is_gbanned(uid):
-        await deny(m, "you are gbanned")
-        return False
-
-    if await is_banned(chat_id, uid):
-        await deny(m, "you are banned in this chat")
-        return False
-
+    # 🔥 Priority Order (fast → slow)
     if uid == OWNER_ID:
         return True
 
