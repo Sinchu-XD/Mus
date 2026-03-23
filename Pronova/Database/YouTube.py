@@ -87,10 +87,18 @@ async def get_stream_cache(key):
         data = await db.yt_stream_cache.find_one({"_id": key})
         if not data:
             return None
-        return data.get("stream")
+
+        stream = data.get("stream")
+
+        if stream:
+            expire_time = get_expire_time(stream)
+            if expire_time and expire_time < int(time.time()):
+                return None
+
+        return stream
+
     except Exception:
         return None
-
 
 async def set_stream_cache(key, stream):
     try:
