@@ -18,8 +18,31 @@ async def get_session():
 async def is_stream_valid(url):
     try:
         session = await get_session()
-        async with session.get(url, allow_redirects=True) as resp:
-            return resp.status == 200
+
+        headers = {
+            "Range": "bytes=0-1024",  # 🔥 only first 1KB
+            "User-Agent": "Mozilla/5.0"
+        }
+
+        async with session.get(url, headers=headers, allow_redirects=True) as resp:
+
+            # ✅ Accept only proper streaming responses
+            if resp.status not in (200, 206):
+                return False
+
+            content_type = resp.headers.get("Content-Type", "")
+
+            # ❗ must be audio/video
+            if "audio" not in content_type and "video" not in content_type:
+                return False
+
+            # ❗ must have length
+            content_length = resp.headers.get("Content-Length")
+            if content_length and int(content_length) < 1000:
+                return False
+
+            return True
+
     except Exception:
         return False
 
