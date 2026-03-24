@@ -163,14 +163,7 @@ class Plugin:
                 pass
 
         try:
-            thumb = await generate(
-                title=song.title,
-                duration=song.duration_text,
-                thumbnail=song.thumb,
-                channel=getattr(song, "channel", "YouTube"),
-                views=getattr(song, "views", "Unknown"),
-                videoid="np"
-            )
+            thumb = await generate(song)
 
             msg = await self.app.send_photo(
                 chat_id,
@@ -207,14 +200,7 @@ class Plugin:
             pass
 
         try:
-            thumb = await generate(
-                title=song.title,
-                duration=song.duration_text,
-                thumbnail=song.thumb,
-                channel=getattr(song, "channel", "YouTube"),
-                views=getattr(song, "views", "Unknown"),
-                videoid="seek"
-            )
+            thumb = await generate(song)
 
             new_msg = await self.app.send_photo(
                 chat_id,
@@ -244,14 +230,7 @@ class Plugin:
         )
 
         try:
-            thumb = await generate(
-                title=song.title,
-                duration=song.duration_text,
-                thumbnail=song.thumb,
-                channel=getattr(song, "channel", "YouTube"),
-                views=getattr(song, "views", "Unknown"),
-                videoid="queue"
-            )
+            thumb = await generate(song)
 
             msg = await self.app.send_photo(
                 chat_id,
