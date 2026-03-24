@@ -1,43 +1,43 @@
-from collections import Counter
+from datetime import datetime
 from .Core import db
+from .Stats import inc_lifetime, inc_daily
 
 
-async def top_groups(limit: int = 10):
-    result = []
+def _chat_id(chat):
+    try:
+        return int(chat.id) if hasattr(chat, "id") else int(chat)
+    except:
+        return None
 
-    async for g in db.group_stats.find(
-        {},
-        {"chat_id": 1, "songs": 1, "_id": 0}
-    ).sort("songs", -1).limit(limit):
 
+async def add_chat(chat):
+    cid = _chat_id(chat)
+    if not cid:
+        return
+
+    res = await db.chats.update_one(
+        {"chat_id": cid},
+        {
+            "$setOnInsert": {
+                "chat_id": cid,
+                "join_date": datetime.utcnow(),
+            }
+        },
+        upsert=True,
+    )
+
+    if res.upserted_id:
+        await inc_lifetime("chats")
+        await inc_daily("chats")
+
+
+async def total_chats():
+    return await db.chats.count_documents({})
+
+
+async def get_all_chats():
+    async for c in db.chats.find({}, {"chat_id": 1, "_id": 0}):
         try:
-            cid = int(g["chat_id"])
-            songs = int(g.get("songs", 0))
+            yield int(c["chat_id"])
         except:
             continue
-
-        if songs > 0:
-            result.append((cid, songs))
-
-    return result
-
-
-async def top_users(limit: int = 10):
-    counter = Counter()
-
-    async for g in db.group_stats.find(
-        {},
-        {"users": 1, "_id": 0}
-    ):
-        users = g.get("users")
-
-        if not isinstance(users, dict):
-            continue
-
-        for uid, count in users.items():
-            try:
-                counter[int(uid)] += int(count)
-            except:
-                continue
-
-    return counter.most_common(limit)
