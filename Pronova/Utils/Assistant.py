@@ -75,22 +75,25 @@ async def get_ass(chat_id, m=None):
         if not bot_member.privileges or not bot_member.privileges.can_invite_users:
             raise ChatAdminRequired
 
-        link = await bot.export_chat_invite_link(chat_id)
+        for _ in range(2):
+            try:
+                link = await bot.export_chat_invite_link(chat_id)
+                await user.join_chat(link)
+                await asyncio.sleep(2)
 
-        try:
-            await user.join_chat(link)
-            await asyncio.sleep(2)
-        except UserAlreadyParticipant:
-            pass
+                if await is_assistant_in_chat(chat_id):
+                    return True
 
-        joined = await is_assistant_in_chat(chat_id)
+            except UserAlreadyParticipant:
+                if await is_assistant_in_chat(chat_id):
+                    return True
 
-        if not joined:
-            if m:
-                await m.reply(sc("Assistant failed to join the chat."))
-            return False
+            except Exception as e:
+                LOGGER.error(f"[Join Attempt Error] {e}")
 
-        return True
+        if m:
+            await m.reply(sc("Assistant failed to join the chat."))
+        return False
 
 
     except (UserBannedInChannel, ChannelPrivate):
@@ -108,23 +111,22 @@ async def get_ass(chat_id, m=None):
 
                 if member.status == ChatMemberStatus.BANNED:
                     await bot.unban_chat_member(chat_id, ASSISTANT_ID)
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(3)
 
             except Exception as e:
-                LOGGER.error(f"[Check Before Unban Error] {e}")
+                LOGGER.error(f"[Unban Check Error] {e}")
 
-            try:
-                link = await bot.export_chat_invite_link(chat_id)
-                await user.join_chat(link)
-                await asyncio.sleep(3)
+            for _ in range(2):
+                try:
+                    link = await bot.export_chat_invite_link(chat_id)
+                    await user.join_chat(link)
+                    await asyncio.sleep(3)
 
-            except Exception as e:
-                LOGGER.error(f"[Join After Unban Error] {e}")
+                    if await is_assistant_in_chat(chat_id):
+                        return True
 
-            joined = await is_assistant_in_chat(chat_id)
-
-            if joined:
-                return True
+                except Exception as e:
+                    LOGGER.error(f"[Join After Unban Error] {e}")
 
             if m:
                 await m.reply(sc(
