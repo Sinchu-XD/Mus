@@ -52,7 +52,7 @@ async def stats(client, m):
         monthly_users = await sum_range(30, "users")
 
         tg = await top_groups(3)
-        tu = await top_users(3)
+        tu = await top_song_players(3)
         LOGGER.info(f"Top users raw data: {tu}")
         mp = await most_played(3)
 
