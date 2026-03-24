@@ -76,7 +76,7 @@ class Thumbnail:
                     with open(output_path, "wb") as f:
                         f.write(await resp.read())
 
-    return output_path
+        return output_path
     async def generate(self, song: Track, size=(1280, 720)) -> str:
         """Generate thumbnail - downloads async, PIL operations in thread pool"""
         try:
