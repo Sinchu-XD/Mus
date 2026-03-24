@@ -80,7 +80,8 @@ async def handle_play(m, force=False, video=False):
         if not song:
             return await m.reply(sc("unable to play media"))
 
-        await inc_song_play(chat_id, title)
+        safe_title = title if title and not str(title).isdigit() else "file"
+        await inc_song_play(chat_id, uid, safe_title)
         return
 
     if len(m.command) < 2:
@@ -101,7 +102,8 @@ async def handle_play(m, force=False, video=False):
     if not song:
         return await m.reply(sc("unable to play song"))
 
-    await inc_song_play(chat_id, title or query)
+    safe_title = title if title and not str(title).isdigit() else "file"
+    await inc_song_play(chat_id, uid, safe_title)
 
 
 @bot.on_message(filters.command(["play"]) & filters.group)
