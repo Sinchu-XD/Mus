@@ -1,6 +1,7 @@
 from .Core import db
 from .Stats import inc_lifetime, inc_daily
 from Pronova.Utils.Logger import LOGGER
+from collections import Counter
 
 
 def normalize_title(title: str) -> str:
