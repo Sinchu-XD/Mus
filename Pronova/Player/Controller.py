@@ -148,6 +148,17 @@ class VoiceController:
 
         return song, pos
 
+    async def seek(self, chat_id, seconds: int):
+        result = await self.player.seek(chat_id, seconds)
+
+        if result:
+            q = self.player.queues.get(chat_id)
+
+            if q and q.current():
+                await self._hook("on_seek", chat_id, q.current(), seconds)
+
+        return result
+
 
     async def stop(self, chat_id):
         if chat_id not in self.player.queues:
