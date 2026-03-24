@@ -53,6 +53,7 @@ async def stats(client, m):
 
         tg = await top_groups(3)
         tu = await top_users(3)
+        LOGGER.info(f"Top users raw data: {tu}")
         mp = await most_played(3)
 
         total_sudo = await db.sudo_users.count_documents({})
