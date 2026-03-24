@@ -7,6 +7,7 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, MessageEn
 from pyrogram import enums
 
 from Pronova.Utils.Thumbnail import get_thumb
+from Pronova.Utils._thumb import generate
 
 
 def clean_html(text: str):
@@ -159,7 +160,7 @@ class Plugin:
                 pass
 
         try:
-            thumb = await get_thumb(
+            thumb = await generate(
                 title=song.title,
                 duration=song.duration_text,
                 thumbnail=song.thumb,
@@ -203,7 +204,7 @@ class Plugin:
             pass
 
         try:
-            thumb = await get_thumb(
+            thumb = await generate(
                 title=song.title,
                 duration=song.duration_text,
                 thumbnail=song.thumb,
@@ -240,7 +241,7 @@ class Plugin:
         )
 
         try:
-            thumb = await get_thumb(
+            thumb = await generate(
                 title=song.title,
                 duration=song.duration_text,
                 thumbnail=song.thumb,
