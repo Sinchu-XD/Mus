@@ -16,30 +16,18 @@ CHAT_CACHE = {}
 @bot.on_message(filters.command("stats"))
 async def stats(client, m):
 
-    LOGGER.info("Stats command triggered")
-
     if not m.from_user:
-        LOGGER.warning("Stats: Message without user (ignored)")
         return
 
-    user_id = m.from_user.id
-    chat_id = m.chat.id
-
-    LOGGER.info(f"Stats requested by user={user_id} in chat={chat_id}")
-
     if await check_ban(m):
-        LOGGER.warning(f"Stats blocked (banned user): {user_id}")
         return
 
     if not await sudo_only(client, m):
-        LOGGER.warning(f"Stats denied (not sudo): {user_id}")
         return
 
     msg = await m.reply(sc("fetching analytics..."))
 
     try:
-        LOGGER.info("Fetching database stats...")
-
         users = await total_users()
         chats = await total_chats()
         songs = await get_lifetime("songs")
@@ -53,16 +41,13 @@ async def stats(client, m):
 
         tg = await top_groups(3)
         tu = await top_song_players(3)
-        LOGGER.info(f"Top users raw data: {tu}")
         mp = await most_played(3)
 
         total_sudo = await db.sudo_users.count_documents({})
         total_auth = await db.auth_users.count_documents({})
 
-        LOGGER.info("Database stats fetched successfully")
-
     except Exception as e:
-        LOGGER.exception(f"Stats Fetch Error: {e}")
+        LOGGER.error(f"Stats Fetch Error: {e}")
         return await msg.edit(sc("failed to fetch stats"))
 
     text = f"📊 {sc('bot analytics')}\n\n"
@@ -90,21 +75,17 @@ async def stats(client, m):
                 cid = int(cid)
 
                 if cid in CHAT_CACHE:
-                    LOGGER.debug(f"Chat cache hit: {cid}")
                     name = CHAT_CACHE[cid]
                 else:
-                    LOGGER.debug(f"Chat cache miss: {cid}")
                     chat = await client.get_chat(cid)
                     name = chat.title
                     CHAT_CACHE[cid] = name
 
-            except Exception as e:
-                LOGGER.warning(f"Failed to fetch chat {cid}: {e}")
+            except Exception:
                 name = cid
 
             text += f"{i}. {name} → {s}\n"
     else:
-        LOGGER.info("No top groups data")
         text += f"{sc('no data')}\n"
 
     text += f"\n👤 {sc('top users')}\n"
@@ -115,21 +96,17 @@ async def stats(client, m):
                 uid = int(uid)
 
                 if uid in USER_CACHE:
-                    LOGGER.debug(f"User cache hit: {uid}")
                     mention = USER_CACHE[uid]
                 else:
-                    LOGGER.debug(f"User cache miss: {uid}")
                     user = await client.get_users(uid)
                     mention = user.mention
                     USER_CACHE[uid] = mention
 
-            except Exception as e:
-                LOGGER.warning(f"Failed to fetch user {uid}: {e}")
+            except Exception:
                 mention = uid
 
             text += f"{i}. {mention} → {c}\n"
     else:
-        LOGGER.info("No top users data")
         text += f"{sc('no data')}\n"
 
     text += f"\n🎧 {sc('most played')}\n"
@@ -138,12 +115,9 @@ async def stats(client, m):
         for i, (name, c) in enumerate(mp, 1):
             text += f"{i}. {name} → {c}\n"
     else:
-        LOGGER.info("No most played data")
         text += f"{sc('no data')}\n"
 
     try:
         await msg.edit(text)
-        LOGGER.info(f"Stats sent successfully to chat={chat_id}")
-
     except Exception as e:
-        LOGGER.exception(f"Stats Edit Error: {e}")
+        LOGGER.error(f"Stats Edit Error: {e}")
