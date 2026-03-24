@@ -58,22 +58,29 @@ class Thumbnail:
 
     async def save_thumb(self, output_path: str, url: str) -> str:
         if not url:
-            url = "https://telegra.ph/file/9c8f8e5b6a1b8e9c.jpg"
+            url = DEFAULT_THUMB
 
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:
                     if resp.status != 200:
-                        raise Exception("Invalid Thumb")
+                        raise Exception(f"Invalid Thumb Status: {resp.status}")
 
+                    data = await resp.read()
+                    if not data:
+                        raise Exception("Empty image data")
+ 
                     with open(output_path, "wb") as f:
-                        f.write(await resp.read())
-        except:
-        # fallback thumb
+                        f.write(data)
+
+        except Exception as e:
+            LOGGER.warning(f"Thumbnail download failed: {e} | Using default")
+
             async with aiohttp.ClientSession() as session:
-                async with session.get("https://telegra.ph/file/9c8f8e5b6a1b8e9c.jpg") as resp:
+                async with session.get(DEFAULT_THUMB) as resp:
+                    data = await resp.read()
                     with open(output_path, "wb") as f:
-                        f.write(await resp.read())
+                        f.write(data)
 
         return output_path
         
