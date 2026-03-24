@@ -7,7 +7,10 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, MessageEn
 from pyrogram import enums
 
 from Pronova.Utils.Thumbnail import get_thumb
-from Pronova.Utils._thumb import generate
+from Pronova.Utils._thumb import Thumbnail
+
+thumb = Thumbnail()
+generate = thumb.generate
 
 
 def clean_html(text: str):
