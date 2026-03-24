@@ -54,7 +54,8 @@ from .Stats import (
 
 from .Songs import (
     inc_song_play,
-    most_played
+    most_played,
+    top_song_players
 )
 
 from .Ranking import (
