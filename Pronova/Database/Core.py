@@ -33,6 +33,7 @@ async def setup_database():
         (db.chats, "chat_id", True),
         (db.group_stats, "chat_id", True),
         (db.songs_stats, "title", True),
+        (db.group_stats, "chat_id", True),
 
         (db.gbanned, "user_id", True),
         (db.daily, "date", True),
@@ -74,6 +75,10 @@ async def setup_database():
         await db.bio_cache.create_index(
             "time",
             expireAfterSeconds=3600
+        )
+
+        await db.group_stats.create_index(
+            [("chat_id", 1), ("songs", 1)]
         )
 
         print("MongoDB Indexes Ready")
