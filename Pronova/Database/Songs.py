@@ -73,3 +73,22 @@ async def top_song_players(limit: int = 5):
 
     LOGGER.info(f"Top song players: {result}")
     return result
+
+async def most_played(limit: int = 10):
+    result = []
+
+    async for s in db.songs_stats.find(
+        {},
+        {"title": 1, "played": 1, "_id": 0}
+    ).sort("played", -1).limit(limit):
+
+        try:
+            title = s["title"]
+            played = int(s.get("played", 0))
+        except:
+            continue
+
+        if played > 0:
+            result.append((title, played))
+
+    return result
