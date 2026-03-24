@@ -8,7 +8,6 @@ from .Models import Song as Track
 
 import hashlib
 
-song_id = hashlib.md5((song.url or song.title).encode()).hexdigest()
 
 # Modern frosted glass design constants
 PANEL_W, PANEL_H = 763, 545
@@ -77,9 +76,12 @@ class Thumbnail:
                         f.write(await resp.read())
 
         return output_path
+        
     async def generate(self, song: Track, size=(1280, 720)) -> str:
         """Generate thumbnail - downloads async, PIL operations in thread pool"""
         try:
+            song_id = hashlib.md5((song.url or song.title).encode()).hexdigest()
+            
             temp = f"cache/temp_{song_id}.jpg"
             output = f"cache/{song_id}_modern.png"
             if os.path.exists(output):
