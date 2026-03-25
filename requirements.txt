@@ -9,3 +9,4 @@ aiohttp
 py-tgcalls
 pillow
 aiofiles
+python-dotenv
