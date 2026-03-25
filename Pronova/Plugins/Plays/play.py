@@ -1,5 +1,3 @@
-Isme Gc log msg send add karna h ki kaha play Hua and konsa song ye sab
-
 from pyrogram import filters
 from traceback import format_exc
 
