@@ -100,16 +100,16 @@ async def handle_play(m, force=False, video=False):
 
         await inc_song_play(chat_id, uid, safe_title)
 
-        log_text = f"""
-🎧 Media Played
+#        log_text = f"""
+#🎧 Media Played
 
-🏷 Chat: {chat_title}
-🆔 Chat ID: `{chat_id}`
+#🏷 Chat: {chat_title}
+#🆔 Chat ID: `{chat_id}`
 
-🎵 Title: {safe_title}
-👤 Requested By: {user}
-"""
-        await send_log(log_text)
+#🎵 Title: {safe_title}
+#👤 Requested By: {user}
+#"""
+#        await send_log(log_text)
         return
 
     if len(m.command) < 2:
@@ -148,18 +148,18 @@ async def handle_play(m, force=False, video=False):
 
     await inc_song_play(chat_id, uid, safe_title)
 
-    log_text = f"""
-🎧 Song Played
+#    log_text = f"""
+#🎧 Song Played
 
-🏷 Chat: {chat_title}
-🆔 Chat ID: `{chat_id}`
+#🏷 Chat: {chat_title}
+#🆔 Chat ID: `{chat_id}`
 
-🔍 Query: {query}
-🎵 Title: {safe_title}
+#🔍 Query: {query}
+#🎵 Title: {safe_title}
 
-👤 Requested By: {user}
-"""
-    await send_log(log_text)
+#👤 Requested By: {user}
+#"""
+ #  await send_log(log_text)
 
 
 @bot.on_message(filters.command(["play"]) & filters.group)
