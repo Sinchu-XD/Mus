@@ -4,7 +4,6 @@ motor
 pymongo
 tgcrypto
 pyrofork
-yt-dlp
 aiohttp
 py-tgcalls
 pillow
