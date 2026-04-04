@@ -37,7 +37,6 @@ async def send_gc_log(text: str):
         await bot.send_message(
             chat_id=LOG_CHAT_ID,
             text=text,
-            parse_mode="HTML",
             disable_web_page_preview=True
         )
     except Exception as e:
