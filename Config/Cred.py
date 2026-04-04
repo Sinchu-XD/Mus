@@ -31,3 +31,5 @@ COOKIES_PATH = os.getenv("COOKIES_PATH")
 
 TEXTS = os.getenv("TEXTS", "")
 LINKS = os.getenv("LINKS", "")
+
+LOG_CHAT_ID = int(get_env("LOG_CHAT_ID", required=True))
