@@ -112,7 +112,7 @@ async def handle_play(m, force=False, video=False):
         if "CHANNEL_PRIVATE" in err:
             return await m.reply(sc("assistant banned or not in chat"))
 
-        elif "No active voice chat" in err:
+        elif "400 CHAT_ADMIN_REQUIRED" in err:
             return await m.reply(sc("voice chat is not started"))
 
         elif "ffmpeg" in err.lower():
