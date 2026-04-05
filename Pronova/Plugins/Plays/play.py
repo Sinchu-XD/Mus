@@ -1,5 +1,4 @@
 from pyrogram import filters
-from traceback import format_exc
 import html
 
 from Config import *
@@ -21,8 +20,8 @@ from pytgcalls.exceptions import NoActiveGroupCall
 async def safe_delete(m):
     try:
         await m.delete()
-    except Exception as e:
-        LOGGER.error(f"Delete Error: {e}")
+    except:
+        pass
 
 
 async def register_usage(m):
@@ -58,8 +57,7 @@ def play_log(m, title):
             f"<b>Chat:</b> {chat_title} (<code>{m.chat.id}</code>)\n"
             f"<b>Song:</b> {song}"
         )
-    except Exception as e:
-        LOGGER.error(f"Log Format Error: {e}")
+    except Exception:
         return f"🎧 <b>PLAY LOG</b>\n\n<b>Song:</b> {html.escape(title)}"
 
 
@@ -90,8 +88,17 @@ async def handle_play(m, force=False, video=False):
     if force:
         try:
             await engine.vc.stop(chat_id)
-        except Exception as e:
-            LOGGER.error(f"Force Stop Error: {e}")
+        except Exception:
+            pass
+
+    try:
+        await engine.vc.get_call(chat_id)
+    except NoActiveGroupCall:
+        return await m.reply(
+            sc("🎧 VC OFF hai!\n\n👉 Pehle Voice Chat ON karo")
+        )
+    except Exception:
+        pass
 
     reply = m.reply_to_message
 
@@ -99,8 +106,7 @@ async def handle_play(m, force=False, video=False):
 
         try:
             path = await reply.download()
-        except Exception as e:
-            LOGGER.error(f"Download Error: {e}")
+        except Exception:
             return await m.reply(sc("download failed"))
 
         try:
@@ -116,7 +122,7 @@ async def handle_play(m, force=False, video=False):
                 sc("🎧 VC OFF hai!\n\n👉 Pehle Voice Chat ON karo")
             )
         except Exception as e:
-            LOGGER.error(format_exc())
+            LOGGER.error(str(e))
             return await m.reply(sc(f"❌ Media Play Error:\n{e}"))
 
         if not song:
@@ -147,7 +153,7 @@ async def handle_play(m, force=False, video=False):
         )
 
     except Exception as e:
-        LOGGER.error(format_exc())
+        LOGGER.error(str(e))
         return await m.reply(sc(f"❌ Error:\n{str(e)}"))
 
     if not song:
@@ -157,8 +163,8 @@ async def handle_play(m, force=False, video=False):
 
     try:
         await send_gc_log(play_log(m, safe_title))
-    except Exception as e:
-        LOGGER.error(f"Final Log Error: {e}")
+    except Exception:
+        pass
 
     await inc_song_play(chat_id, uid, safe_title)
 
