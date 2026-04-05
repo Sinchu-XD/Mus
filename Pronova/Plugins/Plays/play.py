@@ -1,6 +1,7 @@
 from pyrogram import filters
 from traceback import format_exc
 import html
+
 from Config import *
 
 from Pronova.Bot import bot, engine
@@ -13,6 +14,8 @@ from Pronova.Database.Songs import inc_song_play
 from Pronova.Database.Users import add_user
 from Pronova.Database.Chats import add_chat
 from Pronova.Database import is_admin_only
+
+from pytgcalls.exceptions import NoActiveGroupCall
 
 
 async def safe_delete(m):
@@ -58,6 +61,7 @@ def play_log(m, title):
     except Exception as e:
         LOGGER.error(f"Log Format Error: {e}")
         return f"🎧 <b>PLAY LOG</b>\n\n<b>Song:</b> {html.escape(title)}"
+
 
 async def handle_play(m, force=False, video=False):
 
@@ -107,6 +111,10 @@ async def handle_play(m, force=False, video=False):
                 reply=reply,
                 video=video
             )
+        except NoActiveGroupCall:
+            return await m.reply(
+                sc("🎧 VC OFF hai!\n\n👉 Pehle Voice Chat ON karo")
+            )
         except Exception as e:
             LOGGER.error(format_exc())
             return await m.reply(sc(f"❌ Media Play Error:\n{e}"))
@@ -117,7 +125,6 @@ async def handle_play(m, force=False, video=False):
         safe_title = title if title and not str(title).isdigit() else "file"
 
         await send_gc_log(play_log(m, safe_title))
-
         await inc_song_play(chat_id, uid, safe_title)
         return
 
@@ -133,21 +140,15 @@ async def handle_play(m, force=False, video=False):
             m.from_user.mention,
             video=video
         )
+
+    except NoActiveGroupCall:
+        return await m.reply(
+            sc("🎧 VC OFF hai!\n\n👉 Pehle Voice Chat ON karo")
+        )
+
     except Exception as e:
         LOGGER.error(format_exc())
-
-        err = str(e)
-
-        if "CHANNEL_PRIVATE" in err:
-            return await m.reply(sc("assistant banned or not in chat"))
-
-        elif "400 CHAT_ADMIN_REQUIRED" in err:
-            return await m.reply(sc("voice chat is not started"))
-
-        elif "ffmpeg" in err.lower():
-            return await m.reply(sc("ffmpeg issue on server"))
-
-        return await m.reply(sc(f"❌ Error:\n{err}"))
+        return await m.reply(sc(f"❌ Error:\n{str(e)}"))
 
     if not song:
         return await m.reply(sc("unable to play song"))
