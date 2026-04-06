@@ -1,23 +1,25 @@
 import uuid
-from pyrogram import filters
-from pyrogram.types import InlineQueryResultArticle, InputTextMessageContent, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from Pronova.Bot import bot as app
-from Pronova.Utils.Logger import LOGGER
+from pyrogram import Client, filters
+from pyrogram.types import (
+    InlineQueryResultArticle,
+    InputTextMessageContent,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    CallbackQuery
+)
 
-WHISPERS = {}
+from Pronova.Database import save_whisper, get_whisper
+from Pronova.Bot import bos as app
 
 @app.on_inline_query()
 async def inline_handler(client, query):
     try:
         text = query.query.strip()
-        user = query.from_user
-
-        LOGGER.info(f"INLINE_QUERY from {user.id} | query='{text}'")
 
         if not text:
             return await query.answer(
-                results=[],
-                switch_pm_text="Type message + username/id",
+                [],
+                switch_pm_text="Type message + user",
                 switch_pm_parameter="start"
             )
 
@@ -25,7 +27,7 @@ async def inline_handler(client, query):
 
         if len(parts) < 2:
             return await query.answer(
-                results=[],
+                [],
                 switch_pm_text="Example: hello @user",
                 switch_pm_parameter="help"
             )
@@ -40,72 +42,95 @@ async def inline_handler(client, query):
             target = raw_target
             mention = f"User (ID: {target})"
 
-        whisper_id = str(uuid.uuid4())
+        wid = str(uuid.uuid4())
 
-        WHISPERS[whisper_id] = {
-            "text": message_text,
-            "target": target,
-            "from": user.id
-        }
-
-        LOGGER.info(f"WHISPER_CREATED id={whisper_id} from={user.id} to={target} msg='{message_text}'")
+        # ✅ Save in Mongo
+        await save_whisper(
+            wid,
+            message_text,
+            target,
+            query.from_user.id
+        )
 
         keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("👀 Read Whisper", callback_data=f"w_{whisper_id}")]]
+            [[InlineKeyboardButton("👀 Read Whisper", callback_data=f"w_{wid}")]]
         )
 
         result = InlineQueryResultArticle(
             title="Send Whisper",
             description=message_text,
             input_message_content=InputTextMessageContent(
-                f"🤫 Whisper for {mention}\n\nClick button to read"
+                f"🤫 Whisper for {mention}\nTap to read"
             ),
             reply_markup=keyboard
         )
 
         await query.answer([result], cache_time=1)
 
-    except Exception as e:
-        LOGGER.error(f"INLINE_ERROR: {e}")
+    except Exception:
+        try:
+            await query.answer([], switch_pm_text="Error occurred", switch_pm_parameter="error")
+        except:
+            pass
 
 
 @app.on_callback_query(filters.regex("^w_"))
 async def callback_handler(client, query: CallbackQuery):
     try:
-        whisper_id = query.data.split("_")[1]
+        wid = query.data.split("_")[1]
         user = query.from_user
 
-        LOGGER.info(f"WHISPER_OPEN_ATTEMPT id={whisper_id} by={user.id}")
-
-        data = WHISPERS.get(whisper_id)
+        # ✅ Get from Mongo
+        data = await get_whisper(wid)
 
         if not data:
-            LOGGER.warning(f"WHISPER_EXPIRED id={whisper_id}")
-            return await query.answer("Expired or not found", show_alert=True)
+            return await query.answer("Invalid whisper", show_alert=True)
 
         target = data["target"]
+        sender_id = data["sender"]
 
+        allowed = False
+
+        # Sender allowed
+        if user.id == sender_id:
+            allowed = True
+
+        # Receiver allowed
         if target.startswith("@"):
-            if not user.username:
-                LOGGER.warning(f"NO_USERNAME user={user.id}")
-                return await query.answer("You have no username", show_alert=True)
-
-            if "@" + user.username.lower() != target:
-                LOGGER.warning(f"UNAUTHORIZED_ACCESS id={whisper_id} by={user.id}")
-                return await query.answer("Not for you", show_alert=True)
-
+            if user.username and f"@{user.username.lower()}" == target:
+                allowed = True
         else:
-            if str(user.id) != target:
-                LOGGER.warning(f"UNAUTHORIZED_ACCESS id={whisper_id} by={user.id}")
-                return await query.answer("Not for you", show_alert=True)
+            if str(user.id) == target:
+                allowed = True
 
-        LOGGER.info(f"WHISPER_OPENED id={whisper_id} by={user.id}")
+        if not allowed:
+            return await query.answer("Not for you", show_alert=True)
 
-        await query.answer(f"💌 {data['text']}", show_alert=True)
+        # ✅ Show whisper
+        await query.answer(f"💌 {data['msg']}", show_alert=True)
 
-    except Exception as e:
-        LOGGER.error(f"CALLBACK_ERROR: {e}")
-        await query.answer("Error occurred", show_alert=True)
+        # ✅ Edit message
+        try:
+            mention = user.mention
+
+            new_text = f"✅ {mention} Read The Whisper\n\n🤫 Tap below to read again"
+
+            keyboard = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("🔁 Read Again", callback_data=f"w_{wid}")]]
+            )
+
+            await query.message.edit_text(
+                new_text,
+                reply_markup=keyboard
+            )
+        except:
+            pass
+
+    except Exception:
+        try:
+            await query.answer("Error", show_alert=True)
+        except:
+            pass
 
 
 app.run()
