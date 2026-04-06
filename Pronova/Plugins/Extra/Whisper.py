@@ -9,7 +9,7 @@ from pyrogram.types import (
 )
 
 from Pronova.Database import save_whisper, get_whisper
-from Pronova.Bot import bos as app
+from Pronova.Bot import bot as app
 
 @app.on_inline_query()
 async def inline_handler(client, query):
