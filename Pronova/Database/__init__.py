@@ -75,3 +75,8 @@ from .Bio import (
     get_bio_cache,
     set_bio_cache
 )
+
+from .Whisper import (
+    save_whisper,
+    get_whisper
+)
