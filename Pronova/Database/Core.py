@@ -2,9 +2,7 @@ import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from Config import MONGO_URL
 
-
 DB_NAME = os.getenv("DB_NAME", "Pronova")
-
 
 client = AsyncIOMotorClient(
     MONGO_URL,
@@ -17,7 +15,6 @@ client = AsyncIOMotorClient(
 
 db = client[DB_NAME]
 
-
 async def setup_database():
     try:
         await client.admin.command("ping")
@@ -29,25 +26,23 @@ async def setup_database():
     indexes = [
         (db.users, "user_id", True),
         (db.users_backup, "user_id", True),
-
         (db.chats, "chat_id", True),
         (db.group_stats, "chat_id", True),
         (db.songs_stats, "title", True),
- #       (db.group_stats, "chat_id", True),
-
         (db.gbanned, "user_id", True),
         (db.daily, "date", True),
         (db.gc_activity, "chat_id", True),
         (db.afk, "user_id", True),
         (db.play_mode, "chat_id", True),
-
         (db.sudo_users, "user_id", True),
         (db.yt_stream_cache, "_id", True),
         (db.yt_search_cache, "_id", True),
-
         (db.verified_users, "_id", True),
         (db.warns, "_id", True),
         (db.bio_cache, "_id", True),
+        (db.whispers, "_id", True),
+        (db.whispers, "target", False),
+        (db.whispers, "sender", False),
     ]
 
     try:
