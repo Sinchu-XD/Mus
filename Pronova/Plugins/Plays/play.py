@@ -25,6 +25,7 @@ async def safe_delete(m):
 async def register_usage(m):
     if not m.from_user:
         return
+
     try:
         await add_user(m.from_user)
         await add_chat(m.chat)
@@ -33,6 +34,7 @@ async def register_usage(m):
 
 
 async def handle_play(m, force=False, video=False):
+
     if not m.from_user:
         return
 
@@ -64,6 +66,7 @@ async def handle_play(m, force=False, video=False):
     reply = m.reply_to_message
 
     if reply and (reply.voice or reply.audio or reply.video):
+
         try:
             path = await reply.download()
         except Exception:
@@ -103,6 +106,7 @@ async def handle_play(m, force=False, video=False):
 
     except Exception as e:
         LOGGER.error(format_exc())
+
         err = str(e)
 
         if "CHANNEL_PRIVATE" in err:
