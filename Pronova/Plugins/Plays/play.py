@@ -15,6 +15,9 @@ from Pronova.Database.Chats import add_chat
 from Pronova.Database import is_admin_only
 
 
+STICKER_ID = "CAACAgUAAxkBAAKqc2nhU5hE-49YvygFZrIj1_CvmiMVAALbHwACgUMJV5yYypdtH9s2HgQ"
+
+
 async def safe_delete(m):
     try:
         await m.delete()
@@ -41,6 +44,12 @@ async def handle_play(m, force=False, video=False):
     uid = m.from_user.id
     chat_id = m.chat.id
 
+    
+    try:
+        await bot.send_sticker(chat_id, STICKER_ID)
+    except:
+        pass
+
     if await check_ban(message=m):
         return
 
@@ -64,6 +73,7 @@ async def handle_play(m, force=False, video=False):
             LOGGER.error(f"[Force Stop Error] {e}")
 
     reply = m.reply_to_message
+
 
     if reply and (reply.voice or reply.audio or reply.video):
 
@@ -90,6 +100,7 @@ async def handle_play(m, force=False, video=False):
         safe_title = title if title and not str(title).isdigit() else "file"
         await inc_song_play(chat_id, uid, safe_title)
         return
+
 
     if len(m.command) < 2:
         return await m.reply(sc("give song name"))
