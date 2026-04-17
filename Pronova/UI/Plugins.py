@@ -1,3 +1,4 @@
+
 from Pronova.Utils.Logger import LOGGER
 
 import os
@@ -131,11 +132,16 @@ def control_buttons():
             text_list = [t.strip() for t in texts.split(",")]
             link_list = [l.strip() for l in links.split(",")]
 
+            dynamic_styles = [ButtonStyle.PRIMARY, ButtonStyle.SUCCESS, ButtonStyle.DANGER]
+            
             row = []
+            button_count = 0
 
             for t, l in zip(text_list, link_list):
                 if t and l:
-                    row.append(InlineKeyboardButton(t, url=l))
+                    current_style = dynamic_styles[button_count] if button_count < len(dynamic_styles) else ButtonStyle.PRIMARY
+                    row.append(InlineKeyboardButton(t, url=l, style=current_style))
+                    button_count += 1
 
                     if len(row) == 2:
                         buttons.append(row)
@@ -147,9 +153,9 @@ def control_buttons():
         return InlineKeyboardMarkup(buttons)
 
     except Exception as e:
-        from Pronova.Utils.Logger import LOGGER
         LOGGER.error(f"Error in control_buttons: {e}", exc_info=True)
         return InlineKeyboardMarkup([])
+
 
 class Plugin:
     name = "base"
@@ -299,3 +305,4 @@ class Plugin:
             await msg.delete()
         except Exception as e:
             LOGGER.warning(f"Auto delete failed: {e}")
+        
