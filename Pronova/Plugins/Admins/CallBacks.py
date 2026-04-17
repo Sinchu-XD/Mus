@@ -43,6 +43,7 @@ async def vc_buttons(_, cq):
     m = cq.message
     chat_id = m.chat.id
     user = cq.from_user
+    mention = user.mention
 
     if not user or user.is_bot:
         return
@@ -57,35 +58,35 @@ async def vc_buttons(_, cq):
 
     if cq.data == "vc_skip":
         await safe_action(engine.vc.skip, chat_id)
-        await safe_reply(m, sc("song skipped"))
+        await safe_reply(m, sc("song skipped by") + " " + mention)
 
     elif cq.data == "vc_end":
         if chat_id in engine.vc.player.queues:
             await safe_action(engine.vc.stop, chat_id)
-        await safe_reply(m, sc("playback ended"))
+        await safe_reply(m, sc("playback ended by") + " " + mention)
 
     elif cq.data == "vc_pause":
         await safe_action(engine.vc.pause, chat_id)
-        await safe_reply(m, sc("paused"))
+        await safe_reply(m, sc("paused by") + " " + mention)
 
     elif cq.data == "vc_resume":
         await safe_action(engine.vc.resume, chat_id)
-        await safe_reply(m, sc("resumed"))
+        await safe_reply(m, sc("resumed by") + " " + mention)
 
-    elif cq.data == "vc_replay":
-        await safe_action(engine.vc.seek, chat_id, 0)
-        await safe_reply(m, sc("replaying from start"))
+    elif cq.data == "vc_previous":
+        await safe_action(engine.vc.previous, chat_id)
+        await safe_reply(m, sc("previous song played by") + " " + mention)
 
     elif cq.data == "seek_forward":
         try:
             await engine.vc.seek(chat_id, 20)
-            await safe_reply(m, sc("forwarded 20s"))
+            
         except AttributeError:
             pass
 
     elif cq.data == "seek_back":
         try:
             await engine.vc.seek(chat_id, -20)
-            await safe_reply(m, sc("rewinded 20s"))
+            
         except AttributeError:
             pass
