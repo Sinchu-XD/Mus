@@ -1,6 +1,5 @@
 from Pronova.Utils.Logger import LOGGER
 
-import os
 import asyncio
 import random
 import re
@@ -117,21 +116,6 @@ VC_END_DELETE_AFTER = 10
 
 def control_buttons():
     try:
-        texts = os.getenv("TEXTS")
-        links = os.getenv("LINKS")
-
-        promo_text = "ᴏᴡɴᴇʀ"
-        promo_link = "https://t.me/WtfShia"
-        text_list = []
-        link_list = []
-
-        if texts and links:
-            text_list = [t.strip() for t in texts.split(",")]
-            link_list = [l.strip() for l in links.split(",")]
-            if text_list and link_list:
-                promo_text = text_list[0]
-                promo_link = link_list[0]
-
         buttons = [
             [InlineKeyboardButton("00:00 ▬▬▬▬▬▬▬▬▬▬ 00:00", callback_data="dummy_progress", style=ButtonStyle.PRIMARY)],
             [
@@ -143,21 +127,14 @@ def control_buttons():
             ],
             [
                 InlineKeyboardButton("⋖ - 𝟤𝟢 ꜱ", callback_data="seek_back", style=ButtonStyle.PRIMARY),
-                InlineKeyboardButton(promo_text, url=promo_link, style=ButtonStyle.SUCCESS),
-                InlineKeyboardButton("𝟤𝟢 ꜱ + ⋗", callback_data="seek_forward", style=ButtonStyle.PRIMARY),
+                InlineKeyboardButton("ᴏᴡɴᴇʀ", url="https://t.me/WtfShia", style=ButtonStyle.SUCCESS),
+                InlineKeyboardButton("𝟤𝟢 ꜱ + ⋗", callback_data="seek_forward", style=ButtonStyle.DANGER),
             ],
+            [
+                InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url="https://t.me/PronovaSupport", style=ButtonStyle.SUCCESS),
+                InlineKeyboardButton("Uᴘᴅᴀᴛᴇꜱ", url="https://t.me/ProNovaUpdates", style=ButtonStyle.PRIMARY)
+            ]
         ]
-
-        if len(text_list) > 1 and len(link_list) > 1:
-            row = []
-            for t, l in zip(text_list[1:], link_list[1:]):
-                if t and l:
-                    row.append(InlineKeyboardButton(t, url=l, style=ButtonStyle.PRIMARY))
-                    if len(row) == 2:
-                        buttons.append(row)
-                        row = []
-            if row:
-                buttons.append(row)
 
         return InlineKeyboardMarkup(buttons)
 
@@ -315,4 +292,4 @@ class Plugin:
             await msg.delete()
         except Exception as e:
             LOGGER.warning(f"Auto delete failed: {e}")
-            
+                    
