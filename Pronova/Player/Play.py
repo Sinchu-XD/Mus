@@ -1,4 +1,4 @@
-Import time
+import time
 from traceback import format_exc
 
 from Pronova.Utils.Queue import SongQueue
