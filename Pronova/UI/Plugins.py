@@ -120,7 +120,7 @@ def control_buttons():
         links = os.getenv("LINKS")
 
         buttons = [[
-            InlineKeyboardButton("▷", callback_data="vc_resume"),
+            InlineKeyboardButton("▷", callback_data="vc_resume", style="success"),
             InlineKeyboardButton("II", callback_data="vc_pause"),
             InlineKeyboardButton("▢", callback_data="vc_end"),
             InlineKeyboardButton("‣‣I", callback_data="vc_skip"),
