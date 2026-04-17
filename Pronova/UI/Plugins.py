@@ -189,7 +189,7 @@ class Plugin:
             while True:
                 await asyncio.sleep(7)
                 
-                current_time = engine.vc.current_time(chat_id)
+                current_time = engine.vc.player.current_time(chat_id)
 
                 if current_time >= duration_sec or current_time <= 0:
                     break
@@ -280,7 +280,7 @@ class Plugin:
             old_task.cancel()
 
         from Pronova.Bot import engine
-        current_time = engine.vc.current_time(chat_id)
+        current_time = engine.vc.player.current_time(chat_id)
         duration_sec = time_to_sec(song.duration_text)
 
         if duration_sec > 0:
