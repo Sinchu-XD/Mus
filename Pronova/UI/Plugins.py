@@ -1,4 +1,3 @@
-
 from Pronova.Utils.Logger import LOGGER
 
 import os
@@ -121,6 +120,11 @@ def control_buttons():
         texts = os.getenv("TEXTS")
         links = os.getenv("LINKS")
 
+        promo_text = "ᴏᴡɴᴇʀ"
+        promo_link = "https://t.me/WtfShia"
+        text_list = []
+        link_list = []
+
         if texts and links:
             text_list = [t.strip() for t in texts.split(",")]
             link_list = [l.strip() for l in links.split(",")]
@@ -139,12 +143,12 @@ def control_buttons():
             ],
             [
                 InlineKeyboardButton("⋖ - 𝟤𝟢 ꜱ", callback_data="seek_back", style=ButtonStyle.PRIMARY),
-                InlineKeyboardButton("ᴏᴡɴᴇʀ", url="https://t.me/WtfShia", style=ButtonStyle.SUCCESS),
+                InlineKeyboardButton(promo_text, url=promo_link, style=ButtonStyle.SUCCESS),
                 InlineKeyboardButton("𝟤𝟢 ꜱ + ⋗", callback_data="seek_forward", style=ButtonStyle.PRIMARY),
             ],
         ]
 
-        if texts and links and len(text_list) > 1:
+        if len(text_list) > 1 and len(link_list) > 1:
             row = []
             for t, l in zip(text_list[1:], link_list[1:]):
                 if t and l:
@@ -311,4 +315,4 @@ class Plugin:
             await msg.delete()
         except Exception as e:
             LOGGER.warning(f"Auto delete failed: {e}")
-        
+            
