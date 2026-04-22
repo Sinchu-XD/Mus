@@ -161,7 +161,7 @@ async def rewind(client, m):
 
     await m.reply(sc("rewinded 10s"))
 
-
+"""
 @bot.on_message(filters.command("volume"))
 async def volume(client, m):
     if not await admin_only(client, m):
@@ -195,7 +195,7 @@ async def unmute(client, m):
 
     await safe_vc(engine.vc.unmute, m.chat.id)
     await m.reply(sc("unmuted by") + " " + m.from_user.mention)
-
+"""
 
 @bot.on_message(filters.command("queue"))
 async def queue(client, m):
