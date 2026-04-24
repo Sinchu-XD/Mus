@@ -20,7 +20,7 @@ STICKER_ID = "CAACAgUAAxkBAAKqc2nhU5hE-49YvygFZrIj1_CvmiMVAALbHwACgUMJV5yYypdtH9
 
 async def send_log(text):
     try:
-        if LOG_GROUP_ID:
+        if LOG_CHAT_ID:
             await bot.send_message(LOG_CHAT_ID, text)
     except Exception as e:
         LOGGER.error(f"[LOG ERROR] {e}")
