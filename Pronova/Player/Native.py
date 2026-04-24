@@ -26,7 +26,6 @@ class _NativeEngine:
 
         @self._core.on_update(filters.stream_end())
         async def _ended(_, update: StreamEnded):
-
             chat_id = update.chat_id
 
             if chat_id in self._ending:
@@ -49,7 +48,6 @@ class _NativeEngine:
             filters.chat_update(ChatUpdate.Status.CLOSED_VOICE_CHAT)
         )
         async def _vc_closed(_, update: ChatUpdate):
-
             chat_id = update.chat_id
 
             LOGGER.warning(f"[VC CLOSED EVENT] Chat: {chat_id}")
@@ -95,7 +93,22 @@ class _NativeEngine:
                     ffmpeg_parameters=ffmpeg_params
                 )
 
-            await self._core.play(chat_id, media)
+            # 🔥 FIX 1: Timeout + Retry system
+            try:
+                await asyncio.wait_for(self._core.play(chat_id, media), timeout=30)
+            except asyncio.TimeoutError:
+                LOGGER.warning(f"[TIMEOUT RETRY] Chat: {chat_id}")
+
+                # 🔥 FIX 2: Force reconnect
+                try:
+                    await self._core.leave_call(chat_id)
+                except:
+                    pass
+
+                await asyncio.sleep(2)
+
+                # 🔥 Retry play
+                await asyncio.wait_for(self._core.play(chat_id, media), timeout=30)
 
             if chat_id in self._stopped:
                 self._stopped.discard(chat_id)
