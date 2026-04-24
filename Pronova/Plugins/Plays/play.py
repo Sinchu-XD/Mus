@@ -18,6 +18,14 @@ from Pronova.Database import is_admin_only
 STICKER_ID = "CAACAgUAAxkBAAKqc2nhU5hE-49YvygFZrIj1_CvmiMVAALbHwACgUMJV5yYypdtH9s2HgQ"
 
 
+async def send_log(text):
+    try:
+        if LOG_GROUP_ID:
+            await bot.send_message(LOG_GROUP_ID, text)
+    except Exception as e:
+        LOGGER.error(f"[LOG ERROR] {e}")
+
+
 async def safe_delete(m):
     try:
         await m.delete()
@@ -28,7 +36,6 @@ async def safe_delete(m):
 async def register_usage(m):
     if not m.from_user:
         return
-
     try:
         await add_user(m.from_user)
         await add_chat(m.chat)
@@ -43,12 +50,6 @@ async def handle_play(m, force=False, video=False):
 
     uid = m.from_user.id
     chat_id = m.chat.id
-
-    
-   # try:
-  #      await bot.send_sticker(chat_id, STICKER_ID)
-  #  except:
-   #     pass
 
     if await check_ban(message=m):
         return
@@ -74,7 +75,6 @@ async def handle_play(m, force=False, video=False):
 
     reply = m.reply_to_message
 
-
     if reply and (reply.voice or reply.audio or reply.video):
 
         try:
@@ -99,8 +99,25 @@ async def handle_play(m, force=False, video=False):
 
         safe_title = title if title and not str(title).isdigit() else "file"
         await inc_song_play(chat_id, uid, safe_title)
-        return
 
+        chat_title = m.chat.title
+        user = m.from_user.mention
+        chat_link = f"https://t.me/{m.chat.username}" if m.chat.username else "Private Group"
+
+        log_text = f"""
+🎵 Song Played (File)
+
+User: {user}
+User ID: `{uid}`
+
+Chat: {chat_title}
+Chat ID: `{chat_id}`
+Link: {chat_link}
+
+Title: {safe_title}
+"""
+        await send_log(log_text)
+        return
 
     if len(m.command) < 2:
         return await m.reply(sc("give song name"))
@@ -117,7 +134,6 @@ async def handle_play(m, force=False, video=False):
 
     except Exception as e:
         LOGGER.error(format_exc())
-
         err = str(e)
 
         if "CHANNEL_PRIVATE" in err:
@@ -136,6 +152,25 @@ async def handle_play(m, force=False, video=False):
 
     safe_title = title if title and not str(title).isdigit() else "file"
     await inc_song_play(chat_id, uid, safe_title)
+
+    chat_title = m.chat.title
+    user = m.from_user.mention
+    chat_link = f"https://t.me/{m.chat.username}" if m.chat.username else "Private Group"
+
+    log_text = f"""
+🎵 Song Played (Search)
+
+User: {user}
+User ID: `{uid}`
+
+Chat: {chat_title}
+Chat ID: `{chat_id}`
+Link: {chat_link}
+
+Query: {query}
+Title: {safe_title}
+"""
+    await send_log(log_text)
 
 
 @bot.on_message(filters.command(["play"]) & filters.group)
