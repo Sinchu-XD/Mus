@@ -12,6 +12,7 @@ import hashlib
 DEFAULT_THUMB = "https://picsum.photos/1280/720"
 
 
+# ---------- TEXT UTILS ----------
 def trim_to_width(text, font, max_w):
     ellipsis = "…"
     if font.getlength(text) <= max_w:
@@ -22,14 +23,29 @@ def trim_to_width(text, font, max_w):
     return ellipsis
 
 
+def split_text(text):
+    eng, hin = "", ""
+    for ch in text:
+        if ord(ch) < 128:
+            eng += ch
+        else:
+            hin += ch
+    return eng.strip(), hin.strip()
+
+
+# ---------- MAIN CLASS ----------
 class Thumbnail:
     def __init__(self):
         try:
-            self.title_font = ImageFont.truetype("Raleway-Bold.ttf", 50)
-            self.regular_font = ImageFont.truetype("Inter-Regular.ttf", 28)
+            self.title_font = ImageFont.truetype("Cinzel-Black.ttf", 60)
+            self.sub_font = ImageFont.truetype("Raleway-Bold.ttf", 32)
+            self.meta_font = ImageFont.truetype("Inter-Light.ttf", 26)
+            self.hindi_font = ImageFont.truetype("NotoSansDevanagari-Bold.ttf", 60)
         except:
-            self.title_font = self.regular_font = ImageFont.load_default()
+            LOGGER.warning("Font load failed, using default")
+            self.title_font = self.sub_font = self.meta_font = self.hindi_font = ImageFont.load_default()
 
+    # ---------- DOWNLOAD THUMB ----------
     async def save_thumb(self, path, url):
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
@@ -57,6 +73,7 @@ class Thumbnail:
 
         return path
 
+    # ---------- MAIN GENERATE ----------
     async def generate(self, song: Track):
         try:
             sid = hashlib.md5((song.url or song.title).encode()).hexdigest()
@@ -77,11 +94,12 @@ class Thumbnail:
             LOGGER.error(f"Generate error: {e}")
             return DEFAULT_THUMB
 
+    # ---------- IMAGE BUILD ----------
     def _generate_sync(self, temp, output, song):
         try:
             base = Image.open(temp).resize((1280, 720)).convert("RGBA")
 
-            # 🔥 Background blur
+            # 🎬 Cinematic blur background
             bg = ImageEnhance.Brightness(
                 base.filter(ImageFilter.GaussianBlur(30))
             ).enhance(0.4)
@@ -89,36 +107,37 @@ class Thumbnail:
             draw = ImageDraw.Draw(bg)
 
             # ===== TOP LABELS =====
-            draw.rounded_rectangle((60, 50, 240, 110), 25, outline="white", width=2)
-            draw.text((80, 70), "NOW PLAYING", fill="white", font=self.regular_font)
+            draw.rounded_rectangle((60, 50, 260, 110), 25, outline="white", width=2)
+            draw.text((80, 70), "NOW PLAYING", fill="white", font=self.meta_font)
 
             draw.rounded_rectangle((1000, 50, 1220, 110), 25, outline="white", width=2)
-            draw.text((1030, 70), "MUSIC", fill="white", font=self.regular_font)
+            draw.text((1030, 70), "MUSIC", fill="white", font=self.meta_font)
 
-            # ===== TITLE =====
+            # ===== TITLE (ENG + HINDI FIX) =====
             title = re.sub(r"\W+", " ", song.title).title()
+            eng, hin = split_text(title)
 
-            draw.text(
-                (80, 180),
-                trim_to_width(title, self.title_font, 800),
-                fill="white",
-                font=self.title_font
-            )
+            draw.text((80, 180),
+                      trim_to_width(eng, self.title_font, 800),
+                      fill="white",
+                      font=self.title_font)
+
+            if hin:
+                draw.text((80, 250),
+                          trim_to_width(hin, self.hindi_font, 800),
+                          fill="#ffcc66",
+                          font=self.hindi_font)
 
             # ===== META =====
-            draw.text(
-                (80, 270),
-                song.channel,
-                fill="#cccccc",
-                font=self.regular_font
-            )
+            draw.text((80, 320),
+                      song.channel,
+                      fill="#cccccc",
+                      font=self.sub_font)
 
-            draw.text(
-                (80, 310),
-                f"{song.duration} • {song.views or '0 views'}",
-                fill="#aaaaaa",
-                font=self.regular_font
-            )
+            draw.text((80, 360),
+                      f"{song.duration} • {song.views or '0 views'} • YouTube",
+                      fill="#aaaaaa",
+                      font=self.meta_font)
 
             # ===== RIGHT IMAGE =====
             thumb = base.resize((260, 260))
@@ -147,18 +166,19 @@ class Thumbnail:
             )
 
             draw.text((80, 600), "00:00",
-                      fill="#aaaaaa", font=self.regular_font)
+                      fill="#aaaaaa", font=self.meta_font)
 
             end = "Live" if getattr(song, "is_live", False) else song.duration
 
             draw.text((1080, 600), end,
-                      fill="#aaaaaa", font=self.regular_font)
+                      fill="#aaaaaa", font=self.meta_font)
 
             # ===== CONTROLS =====
             draw.text((540, 640), "⏮", fill="white", font=self.title_font)
             draw.text((610, 640), "⏸", fill="white", font=self.title_font)
             draw.text((680, 640), "⏭", fill="white", font=self.title_font)
 
+            # ===== SAVE =====
             bg.save(output)
 
             try:
