@@ -5,7 +5,6 @@ import re
 import asyncio
 import aiohttp
 import hashlib
-import random
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
@@ -14,40 +13,25 @@ from .Models import Song as Track
 DEFAULT_THUMB = "https://picsum.photos/1280/720"
 
 
-# ---------- TEXT HELPERS ----------
-def trim_to_width(text, font, max_w):
-    ellipsis = "…"
+# ---------- TEXT ----------
+def trim(text, font, max_w):
     if font.getlength(text) <= max_w:
         return text
-    for i in range(len(text), 0, -1):
-        if font.getlength(text[:i] + ellipsis) <= max_w:
-            return text[:i] + ellipsis
-    return ellipsis
+    while font.getlength(text + "...") > max_w:
+        text = text[:-1]
+    return text + "..."
 
 
-def split_text(text):
-    eng, hin = "", ""
-    for ch in text:
-        if ord(ch) < 128:
-            eng += ch
-        else:
-            hin += ch
-    return eng.strip(), hin.strip()
-
-
-# ---------- MAIN CLASS ----------
+# ---------- CLASS ----------
 class Thumbnail:
     def __init__(self):
         try:
-            self.title_font = ImageFont.truetype("Cinzel-Black.ttf", 58)
+            self.title_font = ImageFont.truetype("Cinzel-Black.ttf", 56)
             self.sub_font = ImageFont.truetype("Raleway-Bold.ttf", 30)
             self.meta_font = ImageFont.truetype("Inter-Light.ttf", 24)
-            self.hindi_font = ImageFont.truetype("NotoSansDevanagari-Bold.ttf", 58)
         except:
-            LOGGER.warning("Font load failed")
-            self.title_font = self.sub_font = self.meta_font = self.hindi_font = ImageFont.load_default()
+            self.title_font = self.sub_font = self.meta_font = ImageFont.load_default()
 
-    # ---------- DOWNLOAD ----------
     async def save_thumb(self, path, url):
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
@@ -55,158 +39,129 @@ class Thumbnail:
             url = DEFAULT_THUMB
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as r:
-                    data = await r.read()
-                    if not data or len(data) < 5000:
-                        raise Exception("Bad image")
-
+            async with aiohttp.ClientSession() as s:
+                async with s.get(url) as r:
                     with open(path, "wb") as f:
-                        f.write(data)
-
-        except Exception as e:
-            LOGGER.warning(f"Thumbnail download failed: {e}")
-
-            async with aiohttp.ClientSession() as session:
-                async with session.get(DEFAULT_THUMB) as r:
+                        f.write(await r.read())
+        except:
+            async with aiohttp.ClientSession() as s:
+                async with s.get(DEFAULT_THUMB) as r:
                     with open(path, "wb") as f:
                         f.write(await r.read())
 
         return path
 
-    # ---------- GENERATE ----------
     async def generate(self, song: Track):
-        try:
-            sid = hashlib.md5((song.url or song.title).encode()).hexdigest()
+        sid = hashlib.md5((song.url or song.title).encode()).hexdigest()
 
-            temp = f"cache/{sid}_temp.jpg"
-            output = f"cache/{sid}.png"
+        temp = f"cache/{sid}.jpg"
+        out = f"cache/{sid}.png"
 
-            if os.path.exists(output) and os.path.getsize(output) > 10000:
-                return output
+        if os.path.exists(out):
+            return out
 
-            await self.save_thumb(temp, song.thumb)
+        await self.save_thumb(temp, song.thumb)
 
-            return await asyncio.get_event_loop().run_in_executor(
-                None, self._generate_sync, temp, output, song
-            )
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self._sync, temp, out, song
+        )
 
-        except Exception as e:
-            LOGGER.error(f"Generate error: {e}")
-            return DEFAULT_THUMB
-
-    # ---------- IMAGE BUILDER ----------
-    def _generate_sync(self, temp, output, song):
+    def _sync(self, temp, out, song):
         try:
             base = Image.open(temp).resize((1280, 720)).convert("RGBA")
 
-            # ===== BACKGROUND =====
-            bg = ImageEnhance.Brightness(
-                base.filter(ImageFilter.GaussianBlur(35))
-            ).enhance(0.35)
+            # ===== BG =====
+            bg = base.filter(ImageFilter.GaussianBlur(28))
+            bg = ImageEnhance.Brightness(bg).enhance(0.4)
 
             draw = ImageDraw.Draw(bg)
 
-            # ===== TOP TAGS =====
-            draw.rounded_rectangle((60, 60, 240, 110), 30, outline="white", width=2)
+            # ===== TOP =====
+            draw.rounded_rectangle((60, 60, 240, 110), 25, outline="white", width=2)
             draw.text((80, 75), "NOW PLAYING", fill="white", font=self.meta_font)
 
-            draw.rounded_rectangle((1000, 60, 1220, 110), 30, outline="white", width=2)
-            draw.text((1040, 75), "9XM Music", fill="white", font=self.meta_font)
+            draw.rounded_rectangle((1000, 60, 1220, 110), 25, outline="white", width=2)
+            draw.text((1030, 75), "9XM Music", fill="white", font=self.meta_font)
 
             # ===== TITLE =====
             title = re.sub(r"\W+", " ", song.title).title()
-            eng, hin = split_text(title)
 
-            draw.text((80, 170),
-                      trim_to_width(eng, self.title_font, 800),
-                      fill="white", font=self.title_font)
-
-            if hin:
-                draw.text((80, 240),
-                          trim_to_width(hin, self.hindi_font, 800),
-                          fill="#ffcc66", font=self.hindi_font)
+            draw.text(
+                (80, 170),
+                trim(title, self.title_font, 800),
+                fill="white",
+                font=self.title_font
+            )
 
             # ===== META =====
-            draw.text((80, 310), song.channel,
+            draw.text((80, 260), song.channel,
                       fill="#cccccc", font=self.sub_font)
 
-            draw.text((80, 350),
+            draw.text((80, 300),
                       f"{song.duration} • {song.views or '0 views'} • YouTube",
                       fill="#aaaaaa", font=self.meta_font)
 
-            # ===== GLASS CARD =====
-            card = Image.new("RGBA", (320, 420), (0, 0, 0, 160))
-            mask = Image.new("L", card.size, 0)
+            # ===== RIGHT CARD =====
+            card = Image.new("RGBA", (320, 420), (35, 35, 35, 210))
+            mask = Image.new("L", (320, 420), 0)
             ImageDraw.Draw(mask).rounded_rectangle((0, 0, 320, 420), 40, fill=255)
             bg.paste(card, (920, 150), mask)
 
             # ===== POSTER =====
             thumb = base.resize((260, 260))
-            tmask = Image.new("L", thumb.size, 0)
-            ImageDraw.Draw(tmask).rounded_rectangle((0, 0, 260, 260), 30, fill=255)
+            tmask = Image.new("L", (260, 260), 0)
+            ImageDraw.Draw(tmask).rounded_rectangle((0, 0, 260, 260), 25, fill=255)
             bg.paste(thumb, (950, 170), tmask)
 
-            # ===== MINI AVATAR =====
-            avatar = thumb.resize((90, 90))
-            amask = Image.new("L", avatar.size, 0)
-            ImageDraw.Draw(amask).ellipse((0, 0, 90, 90), fill=255)
-            bg.paste(avatar, (1130, 360), amask)
+            # ===== AVATAR =====
+            avatar = thumb.resize((80, 80))
+            amask = Image.new("L", (80, 80), 0)
+            ImageDraw.Draw(amask).ellipse((0, 0, 80, 80), fill=255)
+            bg.paste(avatar, (1140, 360), amask)
 
-            # ===== PROGRESS BAR =====
-            bar_x, bar_y = 80, 580
-            bar_w = 1100
+            # ===== BAR =====
+            bx, by = 80, 580
+            bw = 1100
 
-            draw.line((bar_x, bar_y, bar_x + bar_w, bar_y),
-                      fill="#666", width=4)
+            draw.line((bx, by, bx + bw, by), fill="#555", width=4)
 
-            progress = int(bar_w * 0.4)
+            progress = int(bw * 0.4)
 
-            # glow
-            for i in range(6):
-                draw.line((bar_x, bar_y, bar_x + progress, bar_y),
-                          fill=(255, 140, 0, 40), width=6 + i)
+            draw.line((bx, by, bx + progress, by),
+                      fill="#ffaa33", width=6)
 
-            draw.line((bar_x, bar_y, bar_x + progress, bar_y),
-                      fill="#ff8800", width=5)
+            draw.ellipse((bx + progress - 8, by - 8,
+                          bx + progress + 8, by + 8),
+                         fill="#ffcc66")
 
-            draw.ellipse(
-                (bar_x + progress - 10, bar_y - 10,
-                 bar_x + progress + 10, bar_y + 10),
-                fill="#ffcc66"
-            )
-
-            # ===== WAVEFORM =====
+            # ===== WAVEFORM (CLEAN) =====
             for i in range(85):
-                x = bar_x + i * 13
-                h = random.randint(6, 40)
-                draw.line((x, bar_y - h, x, bar_y + h),
-                          fill=(255, 180, 100), width=2)
+                x = bx + i * 13
+                h = 10 + (i % 10) * 3
+                draw.line((x, by - h, x, by + h),
+                          fill="#ffb366", width=2)
 
             # ===== TIME =====
             draw.text((80, 610), "00:00",
-                      fill="#cccccc", font=self.meta_font)
+                      fill="#ccc", font=self.meta_font)
 
-            end = "Live" if getattr(song, "is_live", False) else song.duration
-
-            draw.text((1080, 610), end,
-                      fill="#cccccc", font=self.meta_font)
+            draw.text((1080, 610), song.duration,
+                      fill="#ccc", font=self.meta_font)
 
             # ===== CONTROLS =====
-            draw.text((540, 650), "⏮", fill="white", font=self.title_font)
-            draw.text((610, 650), "⏸", fill="white", font=self.title_font)
-            draw.text((680, 650), "⏭", fill="white", font=self.title_font)
+            draw.text((580, 650), "⏮", fill="white", font=self.sub_font)
+            draw.text((640, 650), "⏸", fill="white", font=self.sub_font)
+            draw.text((700, 650), "⏭", fill="white", font=self.sub_font)
 
-            # ===== SAVE =====
-            bg.save(output)
+            bg.save(out)
 
             try:
                 os.remove(temp)
             except:
                 pass
 
-            return output
+            return out
 
         except Exception as e:
-            LOGGER.error(f"Sync error: {e}")
+            LOGGER.error(e)
             return DEFAULT_THUMB
