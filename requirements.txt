@@ -3,7 +3,6 @@ pytz
 motor
 pymongo
 tgcrypto
-pyrofork
 aiohttp
 py-tgcalls
 pillow
